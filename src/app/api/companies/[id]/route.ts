@@ -9,6 +9,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     await assertCompanyOwner(id, u.uid)
     const b = await req.json().catch(() => null)
     if (!b || typeof b !== 'object') return Response.json({ error: '参数不合法' }, { status: 400 })
+    if (b.priority != null && !['A', 'B', 'C'].includes(b.priority))
+      return Response.json({ error: '优先级不合法' }, { status: 400 })
+    if (b.verifyStatus != null && !['unverified', 'verified', 'rejected'].includes(b.verifyStatus))
+      return Response.json({ error: '验证状态不合法' }, { status: 400 })
+    if (b.fitScore != null && (!Number.isInteger(b.fitScore) || b.fitScore < 1 || b.fitScore > 5))
+      return Response.json({ error: '契合度需为 1-5 整数' }, { status: 400 })
     await sql`
       UPDATE companies SET
         name = COALESCE(${b.name ?? null}, name),

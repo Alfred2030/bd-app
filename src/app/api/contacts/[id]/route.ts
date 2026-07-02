@@ -18,6 +18,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     await assertContactOwner(id, u.uid)
     const b = await req.json().catch(() => null)
     if (!b || typeof b !== 'object') return Response.json({ error: '参数不合法' }, { status: 400 })
+    if (b.emailStatus != null && !['verified', 'inferred', 'catchall', 'invalid'].includes(b.emailStatus))
+      return Response.json({ error: '邮箱状态不合法' }, { status: 400 })
     await sql`
       UPDATE contacts SET
         name = COALESCE(${b.name ?? null}, name),
