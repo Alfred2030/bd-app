@@ -41,9 +41,17 @@ export default function DraftsPage({ params }: { params: Promise<{ id: string }>
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email1: e1, email2: e2, email3: e3, linkedin_note: note, linkedin_followup: followup }),
     })
-    setMsg(res.ok ? '已保存' : '保存失败：三封邮件的主题和正文都不能为空')
+    if (res.ok) { setMsg('已保存') }
+    else {
+      const j = await res.json().catch(() => null)
+      setMsg('保存失败：' + (j?.error === '草稿格式不合法' || !j?.error ? '三封邮件的主题和正文都不能为空' : j.error))
+    }
   }
-  function copy(text: string) { navigator.clipboard.writeText(text); setMsg('已复制到剪贴板') }
+  function copy(text: string) {
+    navigator.clipboard.writeText(text)
+      .then(() => setMsg('已复制到剪贴板'))
+      .catch(() => setMsg('复制失败，请手动选中复制'))
+  }
 
   const editor = (label: string, v: Email, set: (e: Email) => void) => (
     <div className="card">
