@@ -36,8 +36,15 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       return Response.json({ inserted: 0, found: 0 })
     }
 
-    const text = await glmChat(buildContactExtractionPrompt(project as never, company as never, results))
-    const { rows } = parseContactCandidates(extractJson(text))
+    const prompt = buildContactExtractionPrompt(project as never, company as never, results)
+    let parsed: unknown = []
+    try {
+      parsed = extractJson(await glmChat(prompt))
+    } catch {
+      // GLM 偶发输出解释文字而非 JSON：重试一次，再失败按"未找到"处理
+      try { parsed = extractJson(await glmChat(prompt)) } catch { parsed = [] }
+    }
+    const { rows } = parseContactCandidates(parsed)
     const candidates = rows.slice(0, 5)
 
     const existing = await sql`SELECT lower(name) AS n FROM contacts WHERE company_id = ${cid}`
