@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import InstallButton from '../install-button'
 
 type Code = { code: string; used_count: number; max_uses: number; created: string }
 type User = { email: string; invite_code_used: string; created: string }
@@ -43,7 +44,11 @@ export default function AdminPage() {
 
   return (
     <div className="container" style={{ maxWidth: 520 }}>
-      <h1 style={{ marginTop: 24 }}>邀请码管理</h1>
+      <h1 style={{ marginTop: 24 }}>邀请码管理 <span className="badge ai">管理员专用</span></h1>
+      <p style={{ margin: '10px 0 16px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <InstallButton />
+        <span className="muted" style={{ fontSize: 13 }}>装到手机主屏，发码更快（仅管理员账号可打开本页）</span>
+      </p>
       <div className="card" style={{ textAlign: 'center' }}>
         <button className="btn" style={{ fontSize: 17, padding: '14px 28px', width: '100%' }} disabled={busy} onClick={issue}>
           {busy ? '生成中…' : '生成一个邀请码（¥99 · 一码一号）'}
