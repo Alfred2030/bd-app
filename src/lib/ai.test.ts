@@ -1,6 +1,22 @@
 import { describe, it, expect } from 'vitest'
 import { extractJson } from './glm'
-import { parseCompanies, parseSequence } from './ai'
+import { parseCompanies, parseSequence, parseContactCandidates } from './ai'
+
+describe('parseContactCandidates', () => {
+  it('keeps valid rows, drops nameless rows', () => {
+    const { rows, dropped } = parseContactCandidates([
+      { name: 'Jo Buyer', title: 'Purchasing Manager', linkedin_url: 'https://linkedin.com/in/jo', reason: 'result 1' },
+      { name: '', title: 'Ghost' },
+      { title: 'No name at all' },
+    ])
+    expect(rows).toHaveLength(1)
+    expect(rows[0].name).toBe('Jo Buyer')
+    expect(dropped).toBe(2)
+  })
+  it('returns empty on non-array', () => {
+    expect(parseContactCandidates('nope')).toEqual({ rows: [], dropped: 0 })
+  })
+})
 
 describe('extractJson', () => {
   it('parses fenced json', () => {

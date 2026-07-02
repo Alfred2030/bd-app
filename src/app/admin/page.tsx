@@ -16,7 +16,7 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/invites')
-    if (res.status === 401) { r.push('/login'); return }
+    if (res.status === 401) { r.push('/login?next=/admin'); return }
     if (!res.ok) { setMsg('无权访问'); return }
     const j = await res.json()
     setCodes(j.codes); setUsers(j.users)

@@ -41,6 +41,26 @@ export function parseSequence(raw: unknown): Sequence {
   return SequenceSchema.parse(raw)
 }
 
+export const ContactCandidateSchema = z.object({
+  name: z.string().min(1),
+  title: z.string().default(''),
+  linkedin_url: z.string().default(''),
+  reason: z.string().default(''),
+})
+export type ContactCandidate = z.infer<typeof ContactCandidateSchema>
+
+export function parseContactCandidates(raw: unknown): { rows: ContactCandidate[]; dropped: number } {
+  if (!Array.isArray(raw)) return { rows: [], dropped: 0 }
+  const rows: ContactCandidate[] = []
+  let dropped = 0
+  for (const item of raw) {
+    const r = ContactCandidateSchema.safeParse(item)
+    if (r.success) rows.push(r.data)
+    else dropped++
+  }
+  return { rows, dropped }
+}
+
 type Project = {
   product_desc: string
   competitor_brands: string[]
@@ -102,6 +122,29 @@ Write a professional, concise, benefit-driven English cold-email sequence (3 ema
 - linkedin_followup: message after they accept.
 Every email body must end with an unsubscribe line and a sender address placeholder "[Sender name, Company, Address]".
 Output JSON: {"email1":{"subject":"...","body":"..."},"email2":{...},"email3":{...},"linkedin_note":"...","linkedin_followup":"..."}` },
+  ]
+}
+
+export function buildContactExtractionPrompt(
+  p: Project,
+  c: Company,
+  results: { title: string; description: string; url: string }[],
+): Msg[] {
+  const list = results
+    .map((r, i) => `${i + 1}. 标题：${r.title}\n   摘要：${r.description}\n   链接：${r.url}`)
+    .join('\n')
+  return [
+    { role: 'system', content: '你是 B2B 销售研究员。只依据给到的公开搜索结果做人物提取，绝不编造。只输出 JSON 数组，不要输出任何其他文字。' },
+    { role: 'user', content: `${projectContext(p)}
+
+目标公司：${c.name}（${c.country}），主营：${c.main_distribution || '未知'}。
+
+下面是公开网页搜索结果（可能包含 LinkedIn 公开个人页、公司团队页、新闻等）：
+${list}
+
+请从中提取最多 5 位**很可能在该公司任职**、且与采购/品类/寻源/产品管理或（小公司的）Owner/BD 相关的真实人物。
+每人输出对象字段：name（姓名）, title（职位，未知留空）, linkedin_url（仅当结果里出现该人的 linkedin.com/in 链接才填，否则留空）, reason（依据哪条结果，一句话）。
+铁律：结果里没有出现的人绝不能出现在输出里；不确定是否在该公司任职的不要输出；一个都提取不到就输出 []。只输出 JSON 数组。` },
   ]
 }
 

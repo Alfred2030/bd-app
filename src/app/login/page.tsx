@@ -11,7 +11,10 @@ export default function Login() {
     e.preventDefault(); setBusy(true); setErr('')
     const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
     setBusy(false)
-    if (res.ok) r.push('/dashboard')
+    if (res.ok) {
+      const next = new URLSearchParams(window.location.search).get('next')
+      r.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard')
+    }
     else { const j = await res.json().catch(() => null); setErr(j?.error || '登录失败') }
   }
   return (

@@ -14,6 +14,7 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
   const [sel, setSel] = useState<number | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [persona, setPersona] = useState(''); const [busy, setBusy] = useState(false)
+  const [discovering, setDiscovering] = useState(false); const [discoverMsg, setDiscoverMsg] = useState('')
   const [f, setF] = useState({ name: '', title: '', linkedinUrl: '', email: '', emailStatus: 'inferred' })
 
   useEffect(() => {
@@ -37,6 +38,17 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
     const res = await fetch(`/api/companies/${sel}/persona`, { method: 'POST' })
     setBusy(false)
     setPersona(res.ok ? (await res.json()).text : '生成失败，可重试')
+  }
+  async function discover() {
+    setDiscovering(true); setDiscoverMsg('公网检索 + AI 提取中（约 1–2 分钟）…')
+    const res = await fetch(`/api/companies/${sel}/contacts/discover`, { method: 'POST' })
+    setDiscovering(false)
+    const j = await res.json().catch(() => null)
+    if (!res.ok) { setDiscoverMsg(j?.error || '查找失败，可重试'); return }
+    setDiscoverMsg(j.inserted > 0
+      ? `已自动录入 ${j.inserted} 位候选（标"AI 检索·待核实"），请核实后再补邮箱`
+      : '公开网页上没检索到可靠人选，试试上面 AI 画像给的 LinkedIn 搜索词手动找')
+    loadContacts()
   }
   async function addContact() {
     const res = await fetch(`/api/companies/${sel}/contacts`, {
@@ -64,7 +76,14 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
             <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))}>
               {companies.map(c => <option key={c.id} value={c.id}>[{c.priority}] {c.name}（{c.country}）</option>)}
             </select>
-            <p style={{ marginTop: 12 }}><button className="btn" disabled={busy || sel === null} onClick={genPersona}>AI：该找谁 + LinkedIn 搜索话术</button></p>
+            <p style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn" disabled={discovering || sel === null} onClick={discover}>
+                {discovering ? 'AI 查找中…' : 'AI 自动查找决策人（公网检索）'}
+              </button>
+              <button className="btn secondary" disabled={busy || sel === null} onClick={genPersona}>AI：该找谁 + 搜索话术</button>
+            </p>
+            {discoverMsg && <p className="muted" style={{ fontSize: 13 }}>{discoverMsg}</p>}
+            <p className="muted" style={{ fontSize: 12 }}>只检索公开网页（含公开 LinkedIn 页/公司团队页），不登录、不操作任何 LinkedIn 账号。</p>
             {persona && <pre style={{ whiteSpace: 'pre-wrap', fontSize: 13, marginTop: 10 }} className="muted">{persona}</pre>}
           </div>
           <div className="card">
