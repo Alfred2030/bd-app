@@ -17,13 +17,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const u = await requireUser()
     const id = Number((await ctx.params).id)
     await assertProjectOwner(id, u.uid)
-    const b = await req.json()
+    const b = await req.json().catch(() => null)
+    if (!b || typeof b !== 'object') return Response.json({ error: '参数不合法' }, { status: 400 })
     await sql`
       UPDATE projects SET
         name = COALESCE(${b.name ?? null}, name),
         product_desc = COALESCE(${b.productDesc ?? null}, product_desc),
         competitor_brands = COALESCE(${b.competitorBrands ?? null}, competitor_brands),
-        value_props = COALESCE(${b.valueProps ? JSON.stringify(b.valueProps) : null}, value_props),
+        value_props = COALESCE(${b.valueProps != null ? JSON.stringify(b.valueProps) : null}, value_props),
         target_markets = COALESCE(${b.targetMarkets ?? null}, target_markets),
         target_industries = COALESCE(${b.targetIndustries ?? null}, target_industries)
       WHERE id = ${id}`
