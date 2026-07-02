@@ -11,7 +11,7 @@
 - 数据库：Neon 共享实例上的独立库 `bd`（与 interview 等共用实例、不同 database）。**本地开发与线上共用此库**。
 - 环境变量：`/home/ubuntu/bd-app/.env.local`（chmod 600）：`DATABASE_URL` / `JWT_SECRET`（线上独立随机值）/ `GLM_API_KEY`（与 interview-app 同一个）/ `GLM_MODEL=GLM-5.2`。
 - Cookie：`Secure` 标志由 `NODE_ENV=production` 自动附加（`next start` 即 production）。
-- 邀请码：线上发放用 `BD-LAUNCH`（20 次）；`DEV-TEST`（100 次）供本地开发——注意因共库它在线上同样有效，介意可将其 `expires_at` 置为过去。
+- 邀请码（**2026-07-02 起收费制 ¥99/码**，见 `docs/发码操作卡.md`）：正式发放全部走一次性码（`seed-invite.mjs '' 1`），人工确认微信到账后发码。`BD-LAUNCH` 已停用（max_uses=0）；`DEV-TEST` 已删除，本地开发/冒烟用私有码 **`DEV-2fe79387`**（100 次，勿外传，共库线上同样有效）。冒烟命令记得 `SMOKE_INVITE=DEV-2fe79387`。
 
 ## 发布新版本
 
@@ -25,10 +25,10 @@ cd ~ && tar xzf bd-app.tar.gz -C bd-app && rm bd-app.tar.gz
 cd ~/bd-app && npm ci && npm run build
 pm2 restart bd-app
 curl -s -o /dev/null -w '%{http_code}\n' https://bd.cxodex.com/   # 期望 200
-SMOKE_BASE=https://bd.cxodex.com SMOKE_INVITE=BD-LAUNCH node scripts/smoke.mjs  # 期望 SMOKE PASS
+SMOKE_BASE=https://bd.cxodex.com SMOKE_INVITE=DEV-2fe79387 node scripts/smoke.mjs  # 期望 SMOKE PASS
 # 冒烟会留下一个 smoke-*@test.local 用户并消耗 1 次邀请码，可按需清理：
 # DELETE FROM users WHERE email LIKE 'smoke-%@test.local';
-# UPDATE invite_codes SET used_count = GREATEST(used_count-1,0) WHERE code='BD-LAUNCH';
+# UPDATE invite_codes SET used_count = GREATEST(used_count-1,0) WHERE code='DEV-2fe79387';
 ```
 
 若改了 `db/schema.sql`：`export $(grep DATABASE_URL .env.local) && node scripts/migrate.mjs`（幂等）。
