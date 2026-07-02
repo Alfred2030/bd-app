@@ -31,11 +31,13 @@ export function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
   const raw = fenced ? fenced[1] : text
   try { return JSON.parse(raw) } catch { /* fall through */ }
-  const starts = [raw.indexOf('['), raw.indexOf('{')].filter(i => i >= 0)
-  if (starts.length === 0) throw new Error('响应中未找到 JSON')
-  const start = Math.min(...starts)
-  const endChar = raw[start] === '[' ? ']' : '}'
-  const end = raw.lastIndexOf(endChar)
-  if (end <= start) throw new Error('响应中 JSON 不完整')
-  return JSON.parse(raw.slice(start, end + 1))
+  for (const open of ['[', '{'] as const) {
+    const start = raw.indexOf(open)
+    if (start < 0) continue
+    const close = open === '[' ? ']' : '}'
+    const end = raw.lastIndexOf(close)
+    if (end <= start) continue
+    try { return JSON.parse(raw.slice(start, end + 1)) } catch { /* try next */ }
+  }
+  throw new Error('响应中未找到 JSON')
 }

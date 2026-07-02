@@ -12,6 +12,12 @@ describe('extractJson', () => {
   it('throws on garbage', () => {
     expect(() => extractJson('没有 JSON')).toThrow()
   })
+  it('recovers when stray brackets precede the payload', () => {
+    expect(extractJson('提示 {注意} 结果如下 [{"a":1}] 完')).toEqual([{ a: 1 }])
+  })
+  it('parses object payload when no valid array slice exists', () => {
+    expect(extractJson('注意[未完 结果 {"ok":true} 完')).toEqual({ ok: true })
+  })
 })
 
 describe('parseCompanies', () => {
