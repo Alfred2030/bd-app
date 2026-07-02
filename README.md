@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CXODEX 国际市场开拓工作台
 
-## Getting Started
+竞品信号法（Competitor-Signal BD）出海业务开发工作台。基于 Next.js 15 + Neon (Postgres) + GLM（智谱 AI）构建：从目标市场/竞品切入，AI 辅助生成候选经销商、决策人画像、冷邮件序列与跟进草稿，并提供 30 天追踪看板与 Excel/Word 导出。
 
-First, run the development server:
+**铁律：工具只生成内容，不代发任何邮件/消息。** 所有邮件、LinkedIn 文案均需人工复制后自行发送。
+
+## 技术栈
+
+- Next.js 15（App Router）+ React 19 + TypeScript
+- Neon Serverless Postgres（`@neondatabase/serverless`）
+- GLM（智谱 AI）用于候选生成、文案与画像
+- zod 校验、jose 签发会话 JWT、bcryptjs 密码哈希
+- Vitest 单测
+
+## 环境准备
+
+```bash
+npm i
+```
+
+复制 `.env.example` 为 `.env.local` 并填入：
+
+| 变量 | 说明 |
+| --- | --- |
+| `DATABASE_URL` | Neon Postgres 连接串（含 `sslmode=require`） |
+| `JWT_SECRET` | 会话签名密钥，至少 32 位随机字符串 |
+| `GLM_API_KEY` | 智谱 GLM API Key |
+| `GLM_MODEL` | 使用的 GLM 模型名，如 `glm-4.6` |
+
+初始化数据库结构：
+
+```bash
+npm run migrate
+```
+
+生成一个邀请码（注册需要邀请码）：
+
+```bash
+node scripts/seed-invite.mjs <CODE> <uses>
+```
+
+## 本地开发
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+默认监听端口 **3005**（见 `package.json` 的 `dev`/`start` 脚本）。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 测试
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+单元测试：
 
-## Learn More
+```bash
+npm test
+```
 
-To learn more about Next.js, take a look at the following resources:
+端到端冒烟测试（注册 → 建项目 → 生成候选 → 联系人 → 追踪 → 导出 → 删除项目）：
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+SMOKE_BASE=http://localhost:3005 SMOKE_INVITE=<邀请码> npm run smoke
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`SMOKE_BASE` 默认为 `http://localhost:3005`；`SMOKE_INVITE` 默认为 `DEV-TEST`。
 
-## Deploy on Vercel
+## 生产构建
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm start
+```
