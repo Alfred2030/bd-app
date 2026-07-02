@@ -37,18 +37,21 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     const b = parsed.data
     await sql`
       INSERT INTO activities (company_id) VALUES (${cid}) ON CONFLICT DO NOTHING`
+    // cur is guaranteed to exist after the ensure-INSERT above.
+    const [cur] = await sql`SELECT * FROM activities WHERE company_id = ${cid}`
+    const pick = <T,>(v: T | undefined, curV: T): T => (v === undefined ? curV : v)
     await sql`
       UPDATE activities SET
-        stage = COALESCE(${b.stage ?? null}, stage),
-        channel = COALESCE(${b.channel ?? null}, channel),
-        first_touch_date = COALESCE(${b.firstTouchDate ?? null}, first_touch_date),
-        followup1_date = COALESCE(${b.followup1Date ?? null}, followup1_date),
-        followup2_date = COALESCE(${b.followup2Date ?? null}, followup2_date),
-        last_touch_date = COALESCE(${b.lastTouchDate ?? null}, last_touch_date),
-        replied = COALESCE(${b.replied ?? null}, replied),
-        next_action = COALESCE(${b.nextAction ?? null}, next_action),
-        next_action_date = COALESCE(${b.nextActionDate ?? null}, next_action_date),
-        notes = COALESCE(${b.notes ?? null}, notes),
+        stage = ${pick(b.stage, cur.stage)},
+        channel = ${pick(b.channel, cur.channel)},
+        first_touch_date = ${pick(b.firstTouchDate, cur.first_touch_date)},
+        followup1_date = ${pick(b.followup1Date, cur.followup1_date)},
+        followup2_date = ${pick(b.followup2Date, cur.followup2_date)},
+        last_touch_date = ${pick(b.lastTouchDate, cur.last_touch_date)},
+        replied = ${pick(b.replied, cur.replied)},
+        next_action = ${pick(b.nextAction, cur.next_action)},
+        next_action_date = ${pick(b.nextActionDate, cur.next_action_date)},
+        notes = ${pick(b.notes, cur.notes)},
         updated_at = now()
       WHERE company_id = ${cid}`
     return Response.json({ ok: true })
