@@ -5,6 +5,11 @@ export class UnauthorizedError extends Error {}
 
 export const COOKIE_NAME = 'bd_token'
 
+export function authCookie(token: string, maxAge = 604800): string {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  return `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`
+}
+
 export async function getUser(): Promise<{ uid: number; email: string } | null> {
   const store = await cookies()
   const token = store.get(COOKIE_NAME)?.value

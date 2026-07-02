@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { sql } from '@/lib/db'
 import { hashPassword, signToken } from '@/lib/auth'
-import { COOKIE_NAME } from '@/lib/session'
+import { authCookie } from '@/lib/session'
 
 const Body = z.object({
   email: z.string().email(),
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     status: 201,
     headers: {
       'Content-Type': 'application/json',
-      'Set-Cookie': `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax`,
+      'Set-Cookie': authCookie(token),
     },
   })
 }
