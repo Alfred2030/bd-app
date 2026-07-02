@@ -2,17 +2,19 @@ import { sql } from '@/lib/db'
 import { requireUser } from '@/lib/session'
 import { assertCompanyOwner, errorResponse } from '@/lib/tenant'
 import { glmChat, extractJson } from '@/lib/glm'
-import { buildSequencePrompt, parseSequence } from '@/lib/ai'
+import { buildSequencePrompt, parseSequence, SEQUENCE_LANGUAGES } from '@/lib/ai'
 
-export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const u = await requireUser()
     const cid = Number((await ctx.params).id)
     const { projectId } = await assertCompanyOwner(cid, u.uid)
+    const body = await req.json().catch(() => ({}))
+    const language = typeof body?.language === 'string' && body.language in SEQUENCE_LANGUAGES ? body.language : 'en'
     const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`
     const [company] = await sql`SELECT * FROM companies WHERE id = ${cid}`
     const [contact] = await sql`SELECT name FROM contacts WHERE company_id = ${cid} ORDER BY id LIMIT 1`
-    const text = await glmChat(buildSequencePrompt(project as never, company as never, contact?.name as string | undefined))
+    const text = await glmChat(buildSequencePrompt(project as never, company as never, contact?.name as string | undefined, language))
     const s = parseSequence(extractJson(text))
     await sql`
       INSERT INTO drafts (company_id, email1, email2, email3, linkedin_note, linkedin_followup, generated_at)

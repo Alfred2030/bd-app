@@ -105,7 +105,31 @@ export function buildPersonaPrompt(p: Project, c: Company): Msg[] {
   ]
 }
 
-export function buildSequencePrompt(p: Project, c: Company, contactName?: string): Msg[] {
+// 序列语言：英语默认 + 按目标国自动 + 11 种目标市场语言（法/意/西/葡巴西/葡葡萄牙/德/荷/瑞典/波兰/捷克/土耳其）
+export const SEQUENCE_LANGUAGES: Record<string, string> = {
+  en: 'English',
+  auto: 'AUTO',
+  fr: 'French',
+  it: 'Italian',
+  es: 'Spanish',
+  'pt-BR': 'Brazilian Portuguese',
+  'pt-PT': 'European Portuguese',
+  de: 'German',
+  nl: 'Dutch',
+  sv: 'Swedish',
+  pl: 'Polish',
+  cs: 'Czech',
+  tr: 'Turkish',
+}
+
+export function buildSequencePrompt(p: Project, c: Company, contactName?: string, language = 'en'): Msg[] {
+  const langName = SEQUENCE_LANGUAGES[language] ?? 'English'
+  const langInstruction =
+    language === 'auto'
+      ? `Write ALL email subjects/bodies and LinkedIn scripts in the primary business language of ${c.country || 'the target country'} (e.g. German for Germany/Austria, French for France, Italian for Italy, Spanish for Spain/Mexico, Portuguese for Brazil/Portugal, Dutch for Netherlands/Belgium, Swedish for Sweden, Polish for Poland, Czech for Czechia, Turkish for Turkey). Keep product/technical terms accurate; if the country's business language is English or ambiguous, use English.`
+      : language === 'en'
+        ? 'Write everything in English.'
+        : `Write ALL email subjects/bodies and LinkedIn scripts in ${langName}, natural native business tone for that market. Keep product/technical terms accurate (industry terms may stay in English where that is customary).`
   return [
     { role: 'system', content: 'You are a senior B2B cold-outreach copywriter. Output JSON only, no other text.' },
     { role: 'user', content: `Context (our side):
@@ -114,7 +138,9 @@ ${projectContext(p)}
 Target distributor: ${c.name} (${c.country}), carries competitor brands: ${c.competitor_brands_carried.join(', ') || 'unknown'}.
 Contact name: ${contactName || '(unknown, use a neutral greeting)'}
 
-Write a professional, concise, benefit-driven English cold-email sequence (3 emails) plus LinkedIn scripts:
+Language: ${langInstruction}
+
+Write a professional, concise, benefit-driven cold-email sequence (3 emails) plus LinkedIn scripts:
 - email1 (Day 0): open by naming the competitor brand(s) they carry ("I noticed you supply ..."), offer our equivalent products with the price advantage and quantified proof points above, and propose a FREE head-to-head cost-per-part test on their customer's own workpiece.
 - email2 (+3 days): private-label / OEM angle — we can ship under their own brand.
 - email3 (+7 days): zero-risk close using our risk-free terms (e.g. validation period, no-performance-no-deal, consignment stock).

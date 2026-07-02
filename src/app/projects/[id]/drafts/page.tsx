@@ -7,6 +7,12 @@ type Company = { id: number; name: string; country: string; priority: string }
 type Email = { subject: string; body: string }
 type Drafts = { email1: Email | null; email2: Email | null; email3: Email | null; linkedin_note: string; linkedin_followup: string } | null
 const EMPTY: Email = { subject: '', body: '' }
+const LANGS: [string, string][] = [
+  ['en', '英语（默认）'], ['auto', '自动 · 按目标国'],
+  ['de', '德语'], ['fr', '法语'], ['it', '意大利语'], ['es', '西班牙语'],
+  ['pt-BR', '葡萄牙语（巴西）'], ['pt-PT', '葡萄牙语（葡萄牙）'], ['nl', '荷兰语'],
+  ['sv', '瑞典语'], ['pl', '波兰语'], ['cs', '捷克语'], ['tr', '土耳其语'],
+]
 
 export default function DraftsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -16,6 +22,7 @@ export default function DraftsPage({ params }: { params: Promise<{ id: string }>
   const [e1, setE1] = useState<Email>(EMPTY); const [e2, setE2] = useState<Email>(EMPTY); const [e3, setE3] = useState<Email>(EMPTY)
   const [note, setNote] = useState(''); const [followup, setFollowup] = useState('')
   const [busy, setBusy] = useState(false); const [msg, setMsg] = useState('')
+  const [lang, setLang] = useState('en')
 
   useEffect(() => {
     fetch(`/api/projects/${id}/companies`).then(res => {
@@ -37,7 +44,9 @@ export default function DraftsPage({ params }: { params: Promise<{ id: string }>
 
   async function generate() {
     setBusy(true); setMsg('AI 生成中（约 1–3 分钟）…')
-    const res = await fetch(`/api/companies/${sel}/drafts/generate`, { method: 'POST' })
+    const res = await fetch(`/api/companies/${sel}/drafts/generate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: lang }),
+    })
     setBusy(false)
     if (res.ok) { setMsg('已生成，可编辑后保存'); load() }
     else { const j = await res.json().catch(() => null); setMsg(j?.error || '生成失败，可重试（已填内容未丢失）') }
@@ -77,7 +86,10 @@ export default function DraftsPage({ params }: { params: Promise<{ id: string }>
           <select style={{ width: 320 }} value={sel ?? ''} onChange={e => setSel(Number(e.target.value))}>
             {companies.map(c => <option key={c.id} value={c.id}>[{c.priority}] {c.name}（{c.country}）</option>)}
           </select>
-          <button className="btn" disabled={busy || sel === null} onClick={generate}>AI 生成三封序列</button>
+          <select style={{ width: 170 }} value={lang} onChange={e => setLang(e.target.value)} title="邮件语言">
+            {LANGS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <button className="btn" disabled={busy || sel === null} onClick={generate}>AI 生成三封邮件模板</button>
           <button className="btn secondary" disabled={sel === null} onClick={save}>保存编辑</button>
           <a className="btn secondary" href={sel !== null ? `/api/companies/${sel}/drafts/export` : '#'}>导出 Word</a>
           {msg && <span className="muted">{msg}</span>}
