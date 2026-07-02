@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import ProjectNav from '../nav'
 
 type Company = { id: number; name: string; country: string; priority: string }
@@ -8,6 +9,7 @@ const STATUS_LABEL: Record<string, string> = { verified: '已验证', inferred: 
 
 export default function ContactsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [companies, setCompanies] = useState<Company[]>([])
   const [sel, setSel] = useState<number | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -15,7 +17,11 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
   const [f, setF] = useState({ name: '', title: '', linkedinUrl: '', email: '', emailStatus: 'inferred' })
 
   useEffect(() => {
-    fetch(`/api/projects/${id}/companies`).then(r => r.json()).then((cs: Company[]) => {
+    fetch(`/api/projects/${id}/companies`).then(res => {
+      if (res.status === 401) { router.push('/login'); return }
+      return res.json()
+    }).then((cs?: Company[]) => {
+      if (!cs) return
       setCompanies(cs); if (cs.length && sel === null) setSel(cs[0].id)
     })
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps

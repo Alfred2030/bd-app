@@ -12,7 +12,7 @@ export default function Register() {
     const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, inviteCode }) })
     setBusy(false)
     if (res.ok) r.push('/dashboard')
-    else setErr((await res.json()).error || '注册失败')
+    else { const j = await res.json().catch(() => null); setErr(j?.error || '注册失败') }
   }
   return (
     <div className="container" style={{ maxWidth: 400, paddingTop: 80 }}>

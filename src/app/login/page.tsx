@@ -12,7 +12,7 @@ export default function Login() {
     const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
     setBusy(false)
     if (res.ok) r.push('/dashboard')
-    else setErr((await res.json()).error || '登录失败')
+    else { const j = await res.json().catch(() => null); setErr(j?.error || '登录失败') }
   }
   return (
     <div className="container" style={{ maxWidth: 400, paddingTop: 80 }}>

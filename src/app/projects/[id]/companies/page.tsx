@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import ProjectNav from '../nav'
 
 type Company = {
@@ -11,6 +12,7 @@ type Project = { target_markets: string[] }
 
 export default function CompaniesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [companies, setCompanies] = useState<Company[]>([])
   const [project, setProject] = useState<Project | null>(null)
   const [market, setMarket] = useState('')
@@ -20,13 +22,15 @@ export default function CompaniesPage({ params }: { params: Promise<{ id: string
   const [newName, setNewName] = useState(''); const [newCountry, setNewCountry] = useState('')
 
   const load = useCallback(async () => {
+    const cRes = await fetch(`/api/projects/${id}/companies`)
+    if (cRes.status === 401) { router.push('/login'); return }
     const [c, p] = await Promise.all([
-      fetch(`/api/projects/${id}/companies`).then(r => r.json()),
+      cRes.json(),
       fetch(`/api/projects/${id}`).then(r => r.json()),
     ])
     setCompanies(c); setProject(p)
     if (!market && p.target_markets?.length) setMarket(p.target_markets[0])
-  }, [id, market])
+  }, [id, market, router])
   useEffect(() => { load() }, [load])
 
   async function generate() {
@@ -37,7 +41,7 @@ export default function CompaniesPage({ params }: { params: Promise<{ id: string
     })
     setBusy(false)
     if (res.ok) { const { inserted, dropped } = await res.json(); setMsg(`已生成 ${inserted} 家候选${dropped ? `（丢弃 ${dropped} 条不合规行）` : ''}，均为"AI 建议 · 待验证"`); load() }
-    else setMsg((await res.json()).error || '生成失败，可重试')
+    else { const j = await res.json().catch(() => null); setMsg(j?.error || '生成失败，可重试') }
   }
 
   async function addManual() {

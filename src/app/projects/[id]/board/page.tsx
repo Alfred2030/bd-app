@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import ProjectNav from '../nav'
 
 const STAGES = ['2-待发送', '3-草稿就绪', '4-首触已发', '5-跟进中', '6-已回复', '7-约电话/寄样']
@@ -12,17 +13,20 @@ const d = (s: string | null) => (s ? String(s).slice(0, 10) : '')
 
 export default function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
   const [followup, setFollowup] = useState<{ company: string; subject: string; body: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const companies: Row[] = await fetch(`/api/projects/${id}/companies`).then(r => r.json())
+    const res = await fetch(`/api/projects/${id}/companies`)
+    if (res.status === 401) { router.push('/login'); return }
+    const companies: Row[] = await res.json()
     const withActivity = await Promise.all(companies.map(async c => ({
       ...c, activity: await fetch(`/api/companies/${c.id}/activity`).then(r => r.json()),
     })))
     setRows(withActivity)
-  }, [id])
+  }, [id, router])
   useEffect(() => { load() }, [load])
 
   async function put(cid: number, body: Record<string, unknown>) {
@@ -34,6 +38,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     const res = await fetch(`/api/companies/${c.id}/followup`, { method: 'POST' })
     setBusy(false)
     if (res.ok) { const j = await res.json(); setFollowup({ company: c.name, ...j }) }
+    else { const j = await res.json().catch(() => null); alert('跟进草稿生成失败：' + (j?.error ?? '请重试')) }
   }
 
   const today = new Date()

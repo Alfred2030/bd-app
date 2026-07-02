@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import ProjectNav from '../nav'
 
 type Company = { id: number; name: string; country: string; priority: string }
@@ -9,6 +10,7 @@ const EMPTY: Email = { subject: '', body: '' }
 
 export default function DraftsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [companies, setCompanies] = useState<Company[]>([])
   const [sel, setSel] = useState<number | null>(null)
   const [e1, setE1] = useState<Email>(EMPTY); const [e2, setE2] = useState<Email>(EMPTY); const [e3, setE3] = useState<Email>(EMPTY)
@@ -16,7 +18,11 @@ export default function DraftsPage({ params }: { params: Promise<{ id: string }>
   const [busy, setBusy] = useState(false); const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    fetch(`/api/projects/${id}/companies`).then(r => r.json()).then((cs: Company[]) => {
+    fetch(`/api/projects/${id}/companies`).then(res => {
+      if (res.status === 401) { router.push('/login'); return }
+      return res.json()
+    }).then((cs?: Company[]) => {
+      if (!cs) return
       setCompanies(cs); if (cs.length && sel === null) setSel(cs[0].id)
     })
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -34,7 +40,7 @@ export default function DraftsPage({ params }: { params: Promise<{ id: string }>
     const res = await fetch(`/api/companies/${sel}/drafts/generate`, { method: 'POST' })
     setBusy(false)
     if (res.ok) { setMsg('已生成，可编辑后保存'); load() }
-    else setMsg((await res.json()).error || '生成失败，可重试（已填内容未丢失）')
+    else { const j = await res.json().catch(() => null); setMsg(j?.error || '生成失败，可重试（已填内容未丢失）') }
   }
   async function save() {
     const res = await fetch(`/api/companies/${sel}/drafts`, {
