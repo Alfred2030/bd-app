@@ -1,0 +1,15 @@
+{
+  "name": "CXODEX 国际市场开拓工作台",
+  "short_name": "抓单数字人",
+  "description": "竞品信号法开拓国际市场：AI 目标客户库、冷邮件序列、30 天跟进看板",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0e1117",
+  "theme_color": "#0e1117",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import InstallButton from './install-button'
 
 export default function Home() {
   return (
@@ -9,9 +10,10 @@ export default function Home() {
           用&quot;竞品信号法&quot;开发海外经销商：找到已经在卖竞品的渠道商，用竞品钩子首触，
           以价格优势 + 量化实证 + 零风险条款打开对话。源自超硬刀具行业已验证的出海打法，适用于任何 B2B 产品。
         </p>
-        <p style={{ marginTop: 20 }}>
-          <Link className="btn" href="/register">邀请码注册</Link>{' '}
+        <p style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link className="btn" href="/register">邀请码注册</Link>
           <Link className="btn secondary" href="/login">登录</Link>
+          <InstallButton />
         </p>
       </div>
       <div className="grid2">
