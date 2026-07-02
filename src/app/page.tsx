@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import InstallButton from './install-button'
 
 export default function Home() {
   return (
@@ -12,6 +13,11 @@ export default function Home() {
         <p style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <Link className="btn" href="/register">邀请码注册</Link>
           <Link className="btn secondary" href="/login">登录</Link>
+        </p>
+        <p style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <InstallButton />
+          <span className="badge ai">管理员专用</span>
+          <span className="muted" style={{ fontSize: 13 }}>装到手机主屏后直达管理页，需管理员账号登录</span>
         </p>
       </div>
       <div className="grid2">
