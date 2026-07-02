@@ -2,7 +2,8 @@ type Msg = { role: 'system' | 'user'; content: string }
 
 export async function glmChat(messages: Msg[], opts: { timeoutMs?: number } = {}): Promise<string> {
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 60000)
+  // GLM-5.2 推理模型单次生成可达 3 分钟+，默认放宽到 5 分钟
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 300000)
   try {
     const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
       method: 'POST',
