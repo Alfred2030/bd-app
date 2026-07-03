@@ -9,9 +9,11 @@ type Drafts = { email1: Email | null; email2: Email | null; email3: Email | null
 const EMPTY: Email = { subject: '', body: '' }
 const LANGS: [string, string][] = [
   ['en', '英语（默认）'], ['auto', '自动 · 按目标国'],
+  ['ja', '日语'], ['ko', '韩语'],
   ['de', '德语'], ['fr', '法语'], ['it', '意大利语'], ['es', '西班牙语'],
   ['pt-BR', '葡萄牙语（巴西）'], ['pt-PT', '葡萄牙语（葡萄牙）'], ['nl', '荷兰语'],
   ['sv', '瑞典语'], ['pl', '波兰语'], ['cs', '捷克语'], ['tr', '土耳其语'],
+  ['ru', '俄语'], ['ar', '阿拉伯语'], ['th', '泰语'], ['vi', '越南语'], ['id', '印尼语'],
 ]
 
 export default function DraftsPage({ params }: { params: Promise<{ id: string }> }) {

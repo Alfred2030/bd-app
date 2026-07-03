@@ -105,7 +105,7 @@ export function buildPersonaPrompt(p: Project, c: Company): Msg[] {
   ]
 }
 
-// 序列语言：英语默认 + 按目标国自动 + 11 种目标市场语言（法/意/西/葡巴西/葡葡萄牙/德/荷/瑞典/波兰/捷克/土耳其）
+// 序列语言：英语默认 + 按目标国自动 + 18 种目标市场语言（欧洲 11 种 + 日/韩/俄/阿拉伯/泰/越南/印尼）
 export const SEQUENCE_LANGUAGES: Record<string, string> = {
   en: 'English',
   auto: 'AUTO',
@@ -120,13 +120,20 @@ export const SEQUENCE_LANGUAGES: Record<string, string> = {
   pl: 'Polish',
   cs: 'Czech',
   tr: 'Turkish',
+  ja: 'Japanese',
+  ko: 'Korean',
+  ru: 'Russian',
+  ar: 'Arabic',
+  th: 'Thai',
+  vi: 'Vietnamese',
+  id: 'Indonesian',
 }
 
 export function buildSequencePrompt(p: Project, c: Company, contactName?: string, language = 'en'): Msg[] {
   const langName = SEQUENCE_LANGUAGES[language] ?? 'English'
   const langInstruction =
     language === 'auto'
-      ? `Write ALL email subjects/bodies and LinkedIn scripts in the primary business language of ${c.country || 'the target country'} (e.g. German for Germany/Austria, French for France, Italian for Italy, Spanish for Spain/Mexico, Portuguese for Brazil/Portugal, Dutch for Netherlands/Belgium, Swedish for Sweden, Polish for Poland, Czech for Czechia, Turkish for Turkey). Keep product/technical terms accurate; if the country's business language is English or ambiguous, use English.`
+      ? `Write ALL email subjects/bodies and LinkedIn scripts in the primary business language of ${c.country || 'the target country'} (e.g. German for Germany/Austria, French for France, Italian for Italy, Spanish for Spain/Mexico, Portuguese for Brazil/Portugal, Dutch for Netherlands/Belgium, Swedish for Sweden, Polish for Poland, Czech for Czechia, Turkish for Turkey, Japanese for Japan, Korean for South Korea, Russian for Russia/CIS, Arabic for Middle East/North Africa, Thai for Thailand, Vietnamese for Vietnam, Indonesian for Indonesia). Keep product/technical terms accurate; if the country's business language is English or ambiguous, use English.`
       : language === 'en'
         ? 'Write everything in English.'
         : `Write ALL email subjects/bodies and LinkedIn scripts in ${langName}, natural native business tone for that market. Keep product/technical terms accurate (industry terms may stay in English where that is customary).`

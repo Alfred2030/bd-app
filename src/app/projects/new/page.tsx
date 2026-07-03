@@ -52,7 +52,12 @@ export default function NewProject() {
         </>)}
         {step === 3 && (<>
           <label>目标市场（国家，逗号分隔）</label>
-          <input value={markets} onChange={e => setMarkets(e.target.value)} placeholder="如：Germany, USA, Italy, Poland" />
+          <input value={markets} onChange={e => setMarkets(e.target.value)} placeholder="如：Germany, USA, Japan, UAE, South Africa" />
+          <p className="muted" style={{ fontSize: 12, margin: '6px 0 12px', lineHeight: 1.7 }}>
+            说明：全球任意国家/地区都可填（建议英文名，如 Japan、South Korea、UAE、Saudi Arabia、South Africa、Vietnam），逗号分隔；
+            填过的国家会出现在「目标客户库」的市场下拉里，可逐国生成候选经销商。
+            客户库还内置了大区选项（亚洲/中东/非洲/欧洲/北美/南美等）可直接选，此处留空也不影响使用。
+          </p>
           <label>目标终端行业</label>
           <input value={industries} onChange={e => setIndustries(e.target.value)} placeholder="如：automotive, bearings, gears" />
         </>)}

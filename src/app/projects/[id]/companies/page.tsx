@@ -95,6 +95,10 @@ export default function CompaniesPage({ params }: { params: Promise<{ id: string
             导入 Excel<input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={importFile} />
           </label>
           {msg && <span className="muted">{msg}</span>}
+          <p className="muted" style={{ fontSize: 12, width: '100%', margin: '4px 0 0', lineHeight: 1.7 }}>
+            说明：「大区」覆盖全球（亚洲/中东/非洲/欧洲/北美/南美等），选定后点「AI 生成候选经销商」；
+            想按具体国家找，在建项目时「目标市场」里填国家（英文名，如 Japan、UAE），会出现在本下拉的「项目目标市场」分组。每次生成最多 15 家，可换市场多次生成累加。
+          </p>
         </div>
         {showAdd && (
           <div className="card" style={{ display: 'flex', gap: 8 }}>
