@@ -15,12 +15,36 @@ export const CompanyRowSchema = z.object({
 })
 export type CompanyRow = z.infer<typeof CompanyRowSchema>
 
+// GLM 输出的常见格式偏差在丢弃前先归一化：null 字段剔除让默认值生效、
+// 数字给成字符串、优先级 "a"/"A级"、品牌数组给成逗号分隔字符串。
+function coerceCompanyRow(item: unknown): unknown {
+  if (typeof item !== 'object' || item === null || Array.isArray(item)) return item
+  const r: Record<string, unknown> = { ...(item as Record<string, unknown>) }
+  for (const k of Object.keys(r)) if (r[k] === null) delete r[k]
+  if (typeof r.competitor_brands_carried === 'string')
+    r.competitor_brands_carried = r.competitor_brands_carried.split(/[,;，、|]/).map(s => s.trim()).filter(Boolean)
+  if (Array.isArray(r.competitor_brands_carried))
+    r.competitor_brands_carried = r.competitor_brands_carried.map(b => String(b)).filter(Boolean)
+  if (typeof r.fit_score === 'string' && r.fit_score.trim() !== '') r.fit_score = Number(r.fit_score)
+  if (typeof r.fit_score === 'number' && Number.isFinite(r.fit_score))
+    r.fit_score = Math.min(5, Math.max(1, Math.round(r.fit_score)))
+  else delete r.fit_score
+  if (typeof r.priority === 'string') {
+    const p = r.priority.trim().toUpperCase().charAt(0)
+    if (['A', 'B', 'C'].includes(p)) r.priority = p
+    else delete r.priority
+  }
+  for (const k of ['name', 'country', 'city', 'website', 'main_distribution', 'end_industries', 'size_estimate', 'reason'])
+    if (r[k] !== undefined && typeof r[k] !== 'string') r[k] = String(r[k])
+  return r
+}
+
 export function parseCompanies(raw: unknown): { rows: CompanyRow[]; dropped: number } {
   if (!Array.isArray(raw)) return { rows: [], dropped: 0 }
   const rows: CompanyRow[] = []
   let dropped = 0
   for (const item of raw) {
-    const r = CompanyRowSchema.safeParse(item)
+    const r = CompanyRowSchema.safeParse(coerceCompanyRow(item))
     if (r.success) rows.push(r.data)
     else dropped++
   }

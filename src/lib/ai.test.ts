@@ -43,15 +43,29 @@ describe('parseCompanies', () => {
         competitor_brands_carried: ['BrandX'], main_distribution: 'cutting tools',
         end_industries: 'automotive', size_estimate: '50-100', fit_score: 4, priority: 'A', reason: 'carries BrandX' },
       { name: '', country: 'US' },            // 缺 name → 丢
-      { name: 'NoScore Inc', country: 'US', fit_score: 99 }, // fit_score 越界 → 丢
+      { name: 'NoScore Inc', country: 'US', fit_score: 99 }, // fit_score 越界 → 钳制到 5 保留
     ]
     const { rows, dropped } = parseCompanies(raw)
-    expect(rows).toHaveLength(1)
+    expect(rows).toHaveLength(2)
     expect(rows[0].name).toBe('Acme Tools GmbH')
-    expect(dropped).toBe(2)
+    expect(rows[1]).toMatchObject({ name: 'NoScore Inc', fit_score: 5 })
+    expect(dropped).toBe(1)
   })
   it('returns empty on non-array', () => {
     expect(parseCompanies({ nope: 1 })).toEqual({ rows: [], dropped: 0 })
+  })
+  it('coerces sloppy GLM output instead of dropping (null fields, string numbers, lowercase priority, string brands)', () => {
+    const { rows, dropped } = parseCompanies([
+      { name: 'Null Fields Inc', country: 'Canada', city: null, website: null, competitor_brands_carried: null,
+        main_distribution: null, end_industries: null, size_estimate: null, fit_score: null, priority: null, reason: null },
+      { name: 'Stringy Ltd', country: 'Canada', fit_score: '4', priority: 'a', competitor_brands_carried: 'Sandvik, Kennametal' },
+      { name: 'Overflow Corp', country: 'Canada', fit_score: 9.7, priority: 'B级' },
+    ])
+    expect(dropped).toBe(0)
+    expect(rows).toHaveLength(3)
+    expect(rows[0]).toMatchObject({ city: '', fit_score: 3, priority: 'B', competitor_brands_carried: [] })
+    expect(rows[1]).toMatchObject({ fit_score: 4, priority: 'A', competitor_brands_carried: ['Sandvik', 'Kennametal'] })
+    expect(rows[2]).toMatchObject({ fit_score: 5, priority: 'B' })
   })
 })
 
