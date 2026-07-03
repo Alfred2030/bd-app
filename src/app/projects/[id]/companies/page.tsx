@@ -9,6 +9,7 @@ type Company = {
   size_estimate: string; fit_score: number; priority: string; verify_status: string; notes: string; stage: string | null
 }
 type Project = { target_markets: string[] }
+const REGIONS = ['北美', '南美', '欧洲', '北欧', '俄罗斯', '非洲', '中东', '亚洲', '拉丁美洲']
 
 export default function CompaniesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -79,7 +80,14 @@ export default function CompaniesPage({ params }: { params: Promise<{ id: string
         <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <select style={{ width: 180 }} value={market} onChange={e => setMarket(e.target.value)}>
             <option value="">选择市场…</option>
-            {project?.target_markets?.map(m => <option key={m} value={m}>{m}</option>)}
+            <optgroup label="大区">
+              {REGIONS.map(m => <option key={m} value={m}>{m}</option>)}
+            </optgroup>
+            {project?.target_markets?.filter(m => !REGIONS.includes(m)).length ? (
+              <optgroup label="项目目标市场">
+                {project.target_markets.filter(m => !REGIONS.includes(m)).map(m => <option key={m} value={m}>{m}</option>)}
+              </optgroup>
+            ) : null}
           </select>
           <button className="btn" disabled={busy} onClick={generate}>AI 生成候选经销商</button>
           <button className="btn secondary" onClick={() => setShowAdd(!showAdd)}>+ 手动添加</button>
