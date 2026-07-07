@@ -40,7 +40,7 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
     setPersona(res.ok ? (await res.json()).text : '生成失败，可重试')
   }
   async function discover() {
-    setDiscovering(true); setDiscoverMsg('公网检索 + AI 提取中（约 1–2 分钟）…')
+    setDiscovering(true); setDiscoverMsg('公网检索 + AI 提取中（约 30–60 秒）…')
     const res = await fetch(`/api/companies/${sel}/contacts/discover`, { method: 'POST' })
     setDiscovering(false)
     const j = await res.json().catch(() => null)
