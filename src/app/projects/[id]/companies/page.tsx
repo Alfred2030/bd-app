@@ -36,12 +36,12 @@ export default function CompaniesPage({ params }: { params: Promise<{ id: string
 
   async function generate() {
     if (!market) { setMsg('请先选择市场'); return }
-    setBusy(true); setMsg('AI 生成中（约 20–40 秒，可多次生成累加）…')
+    setBusy(true); setMsg('AI 生成中（约 1–2 分钟，逐一核实真实经销商，可多次生成累加）…')
     const res = await fetch(`/api/projects/${id}/companies/generate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ market }),
     })
     setBusy(false)
-    if (res.ok) { const { inserted, dropped } = await res.json(); setMsg(`已生成 ${inserted} 家候选${dropped ? `（丢弃 ${dropped} 条不合规行）` : ''}，均为"AI 建议 · 待验证"`); load() }
+    if (res.ok) { const { inserted, dropped, duplicate } = await res.json(); setMsg(`已新增 ${inserted} 家候选${duplicate ? `（跳过 ${duplicate} 家重复）` : ''}${dropped ? `（丢弃 ${dropped} 条不合规行）` : ''}，均为"AI 建议 · 待验证"`); load() }
     else { const j = await res.json().catch(() => null); setMsg(j?.error || '生成失败，可重试') }
   }
 

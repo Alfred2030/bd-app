@@ -16,13 +16,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!parsed.success) return Response.json({ error: '请选择目标市场' }, { status: 400 })
 
     const projects = await sql`SELECT * FROM projects WHERE id = ${pid}`
-    const text = await glmChat(buildCompanyPrompt(projects[0] as never, parsed.data.market), { fast: true })
+    // 经销商生成需真实行业知识（分清经销商 vs 品牌制造商），显式用 glm-4.6 保质量；
+    // 决策人提取/画像/跟进等读文本/写建议任务用更快的 air（见各自路由 fast:true）。
+    const text = await glmChat(buildCompanyPrompt(projects[0] as never, parsed.data.market), { model: 'glm-4.6' })
     const { rows, dropped } = parseCompanies(extractJson(text))
 
-    const capped = rows.slice(0, 20)
+    // 去重：同名（不分大小写）在本批内或库中已存在的跳过，避免 AI 吐重复项重复入库
+    const existing = await sql`SELECT lower(name) AS n FROM companies WHERE project_id = ${pid}`
+    const seen = new Set<string>(existing.map(e => e.n as string))
     let inserted = 0
     let failed = 0
-    for (const r of capped) {
+    let duplicate = 0
+    for (const r of rows.slice(0, 20)) {
+      const key = r.name.trim().toLowerCase()
+      if (seen.has(key)) { duplicate++; continue }
+      seen.add(key)
       try {
         const res = await sql`
           INSERT INTO companies (project_id, name, country, city, website, source,
@@ -39,6 +47,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         failed++
       }
     }
-    return Response.json({ inserted, dropped: dropped + (rows.length - capped.length) + failed })
+    return Response.json({ inserted, dropped: dropped + failed, duplicate })
   } catch (e) { return errorResponse(e) }
 }

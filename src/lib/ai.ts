@@ -113,7 +113,7 @@ export function buildCompanyPrompt(p: Project, market: string): Msg[] {
     { role: 'system', content: '你是 B2B 国际渠道开发研究员。只输出 JSON 数组，不要输出任何其他文字。' },
     { role: 'user', content: `${projectContext(p)}
 
-请基于你的行业知识，列出 ${market} 最多 12 家**工业刀具经销商/分销商/贸易商**——即同时代理多个刀具品牌、向制造工厂销售的渠道商，很可能在售上述竞品品牌。
+请基于你的行业知识，列出 ${market} 最多 8 家**工业刀具经销商/分销商/贸易商**——即同时代理多个刀具品牌、向制造工厂销售的渠道商，很可能在售上述竞品品牌。
 严禁列入以下两类（列错任务就失败）：
 1) 刀具制造商/品牌方本身（如 Sumitomo、Kennametal、Sandvik、Walter、MAPAL、Gühring、Iscar、Mitsubishi 等是生产厂，不是经销商）；
 2) 终端制造工厂（买刀具自用的加工厂）。
