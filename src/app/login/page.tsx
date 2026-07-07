@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import VideoDemo from '../video-demo'
 
 export default function Login() {
   const r = useRouter()
@@ -25,7 +26,10 @@ export default function Login() {
           <label>邮箱</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
           <label>密码</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
           {err && <p className="error">{err}</p>}
-          <p style={{ marginTop: 16 }}><button className="btn" disabled={busy}>登录</button></p>
+          <p style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button className="btn" disabled={busy}>登录</button>
+            <VideoDemo />
+          </p>
         </form>
         <p className="muted" style={{ marginTop: 12 }}>没有账号？<Link href="/register">邀请码注册</Link></p>
       </div>

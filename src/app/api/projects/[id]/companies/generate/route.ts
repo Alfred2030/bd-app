@@ -16,7 +16,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!parsed.success) return Response.json({ error: '请选择目标市场' }, { status: 400 })
 
     const projects = await sql`SELECT * FROM projects WHERE id = ${pid}`
-    const text = await glmChat(buildCompanyPrompt(projects[0] as never, parsed.data.market))
+    const text = await glmChat(buildCompanyPrompt(projects[0] as never, parsed.data.market), { fast: true })
     const { rows, dropped } = parseCompanies(extractJson(text))
 
     const capped = rows.slice(0, 20)

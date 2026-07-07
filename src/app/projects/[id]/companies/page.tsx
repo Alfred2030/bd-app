@@ -36,7 +36,7 @@ export default function CompaniesPage({ params }: { params: Promise<{ id: string
 
   async function generate() {
     if (!market) { setMsg('请先选择市场'); return }
-    setBusy(true); setMsg('AI 生成中（约 1–3 分钟）…')
+    setBusy(true); setMsg('AI 生成中（通常 30–60 秒）…')
     const res = await fetch(`/api/projects/${id}/companies/generate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ market }),
     })

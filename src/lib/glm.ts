@@ -1,9 +1,14 @@
 type Msg = { role: 'system' | 'user'; content: string }
 
-export async function glmChat(messages: Msg[], opts: { timeoutMs?: number } = {}): Promise<string> {
+// 主模型（GLM-5.2 推理）用于创意任务（冷邮件文案）；快模型（GLM-4.6 非推理）
+// 用于结构化信息任务（生成经销商列表、提取决策人、职位画像、跟进草稿），快 2–4 倍。
+export async function glmChat(messages: Msg[], opts: { timeoutMs?: number; fast?: boolean } = {}): Promise<string> {
   const ctrl = new AbortController()
   // GLM-5.2 推理模型单次生成可达 3 分钟+，默认放宽到 5 分钟
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 300000)
+  const model = opts.fast
+    ? (process.env.GLM_FAST_MODEL || 'glm-4.6')
+    : (process.env.GLM_MODEL || 'glm-4.6')
   try {
     const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
       method: 'POST',
@@ -12,7 +17,7 @@ export async function glmChat(messages: Msg[], opts: { timeoutMs?: number } = {}
         Authorization: `Bearer ${process.env.GLM_API_KEY}`,
       },
       body: JSON.stringify({
-        model: process.env.GLM_MODEL || 'glm-4.6',
+        model,
         messages,
         temperature: 0.6,
       }),

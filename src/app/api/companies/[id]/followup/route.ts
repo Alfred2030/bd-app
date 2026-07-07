@@ -15,7 +15,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`
     const [company] = await sql`SELECT * FROM companies WHERE id = ${cid}`
     const [activity] = await sql`SELECT stage, last_touch_date FROM activities WHERE company_id = ${cid}`
-    const text = await glmChat(buildFollowupPrompt(project as never, company as never, activity as never))
+    const text = await glmChat(buildFollowupPrompt(project as never, company as never, activity as never), { fast: true })
     return Response.json(Out.parse(extractJson(text)))
   } catch (e) { return errorResponse(e) }
 }

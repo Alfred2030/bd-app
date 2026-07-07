@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import InstallButton from './install-button'
+import VideoDemo from './video-demo'
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
         <p style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <Link className="btn" href="/register">邀请码注册</Link>
           <Link className="btn secondary" href="/login">登录</Link>
+          <VideoDemo />
         </p>
         <p style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <InstallButton />
