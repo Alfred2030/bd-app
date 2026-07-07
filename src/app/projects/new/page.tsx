@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const STEPS = ['产品线', '竞品品牌', '价值主张', '目标市场与行业']
@@ -7,6 +7,8 @@ const STEPS = ['产品线', '竞品品牌', '价值主张', '目标市场与行�
 export default function NewProject() {
   const r = useRouter()
   const [step, setStep] = useState(0)
+  // 预热目标客户库页的代码分片，提交后跳转更快（动态路由模板共享同一 bundle）
+  useEffect(() => { r.prefetch('/projects/1/companies') }, [r])
   const [name, setName] = useState(''); const [productDesc, setProductDesc] = useState('')
   const [brands, setBrands] = useState(''); const [markets, setMarkets] = useState(''); const [industries, setIndustries] = useState('')
   const [priceAdvantage, setPriceAdvantage] = useState(''); const [proofPoints, setProofPoints] = useState(''); const [riskFreeTerms, setRiskFreeTerms] = useState('')
@@ -65,7 +67,7 @@ export default function NewProject() {
         <p style={{ marginTop: 16, display: 'flex', gap: 8 }}>
           {step > 0 && <button className="btn secondary" onClick={() => setStep(step - 1)}>上一步</button>}
           {step < 3 && <button className="btn" disabled={step === 0 && (!name || !productDesc)} onClick={() => setStep(step + 1)}>下一步</button>}
-          {step === 3 && <button className="btn" disabled={busy || !name || !productDesc} onClick={submit}>创建项目</button>}
+          {step === 3 && <button className="btn" disabled={busy || !name || !productDesc} onClick={submit}>{busy ? '创建中…' : '创建项目'}</button>}
         </p>
       </div>
     </div>
