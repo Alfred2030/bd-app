@@ -27,6 +27,8 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
     })
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const selCompany = companies.find(c => c.id === sel)
+
   const loadContacts = useCallback(async () => {
     if (sel === null) return
     setContacts(await fetch(`/api/companies/${sel}/contacts`).then(r => r.json()))
@@ -48,6 +50,17 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
     setDiscoverMsg(j.inserted > 0
       ? `已自动录入 ${j.inserted} 位候选（标"AI 检索·待核实"），请核实后再补邮箱`
       : '公开网页上没检索到可靠人选，试试上面 AI 画像给的 LinkedIn 搜索词手动找')
+    loadContacts()
+  }
+  async function hunterFind() {
+    setDiscovering(true); setDiscoverMsg('Hunter 查邮箱中（约 5–15 秒）…')
+    const res = await fetch(`/api/companies/${sel}/contacts/hunter`, { method: 'POST' })
+    setDiscovering(false)
+    const j = await res.json().catch(() => null)
+    if (!res.ok) { setDiscoverMsg(j?.error || '查找失败，可重试'); return }
+    setDiscoverMsg(j.inserted > 0
+      ? `Hunter 录入 ${j.inserted} 条邮箱${j.generic ? `（其中 ${j.generic} 条为通用邮箱）` : ''}，已按可信度标注邮箱状态，发送前请复核`
+      : '该公司官网域名下 Hunter 暂无可用邮箱，试试上面公网检索或 LinkedIn 搜索')
     loadContacts()
   }
   async function addContact() {
@@ -77,9 +90,10 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
               {companies.map(c => <option key={c.id} value={c.id}>[{c.priority}] {c.name}（{c.country}）</option>)}
             </select>
             <p style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn" disabled={discovering || sel === null} onClick={discover}>
-                {discovering ? 'AI 查找中…' : 'AI 自动查找决策人（公网检索）'}
+              <button className="btn" disabled={discovering || sel === null} onClick={hunterFind}>
+                {discovering ? '查找中…' : 'Hunter 查邮箱决策人'}
               </button>
+              <button className="btn secondary" disabled={discovering || sel === null} onClick={discover}>AI 公网检索决策人</button>
               <button className="btn secondary" disabled={busy || sel === null} onClick={genPersona}>AI：该找谁 + 搜索话术</button>
             </p>
             {discoverMsg && <p className="muted" style={{ fontSize: 13 }}>{discoverMsg}</p>}
