@@ -3,7 +3,7 @@ import { sql } from '@/lib/db'
 import { requireUser } from '@/lib/session'
 import { assertProjectOwner, errorResponse } from '@/lib/tenant'
 import { glmChat, extractJson } from '@/lib/glm'
-import { parseCompanies, buildCompanyPrompt } from '@/lib/ai'
+import { parseCompanies, buildCompanyPrompt, companyKey } from '@/lib/ai'
 
 const Body = z.object({ market: z.string().min(1) })
 
@@ -22,14 +22,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { rows, dropped } = parseCompanies(extractJson(text))
 
     // 去重：同名（不分大小写）在本批内或库中已存在的跳过，避免 AI 吐重复项重复入库
-    const existing = await sql`SELECT lower(name) AS n FROM companies WHERE project_id = ${pid}`
-    const seen = new Set<string>(existing.map(e => e.n as string))
+    const existing = await sql`SELECT name FROM companies WHERE project_id = ${pid}`
+    const seen = new Set<string>(existing.map(e => companyKey(e.name as string)))
     let inserted = 0
     let failed = 0
     let duplicate = 0
     for (const r of rows.slice(0, 20)) {
-      const key = r.name.trim().toLowerCase()
-      if (seen.has(key)) { duplicate++; continue }
+      const key = companyKey(r.name)
+      if (!key || seen.has(key)) { duplicate++; continue }
       seen.add(key)
       try {
         const res = await sql`

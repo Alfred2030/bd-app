@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { extractJson } from './glm'
-import { parseCompanies, parseSequence, parseContactCandidates } from './ai'
+import { parseCompanies, parseSequence, parseContactCandidates, companyKey } from './ai'
+
+describe('companyKey', () => {
+  it('normalizes bilingual and suffix variants to the same key', () => {
+    expect(companyKey('Hoffmann Gruppe')).toBe(companyKey('Hoffmann Group'))
+    expect(companyKey('Würth Industrie Service GmbH & Co. KG')).toBe(companyKey('Würth Industrie Service'))
+  })
+  it('keeps distinct companies distinct', () => {
+    expect(companyKey('Hahn + Kolb')).not.toBe(companyKey('Kistenpfennig'))
+  })
+})
 
 describe('parseContactCandidates', () => {
   it('keeps valid rows, drops nameless rows', () => {

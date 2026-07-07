@@ -39,6 +39,15 @@ function coerceCompanyRow(item: unknown): unknown {
   return r
 }
 
+// 公司名归一化去重键：去掉法律/集团后缀词与标点空格，"Hoffmann Gruppe" 与
+// "Hoffmann Group"、"Würth ... GmbH & Co. KG" 与 "Würth ..." 归一为同键。
+export function companyKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(gmbh|co|kg|ag|group|gruppe|ltd|limited|inc|llc|corp|sa|srl|bv|nv|oy|ab|as|spa|sarl|gbr|ohg)\b/g, '')
+    .replace(/[^a-z0-9À-ſ]+/g, '')
+}
+
 export function parseCompanies(raw: unknown): { rows: CompanyRow[]; dropped: number } {
   if (!Array.isArray(raw)) return { rows: [], dropped: 0 }
   const rows: CompanyRow[] = []
