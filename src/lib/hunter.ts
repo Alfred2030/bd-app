@@ -22,7 +22,9 @@ export async function hunterDomainSearch(domain: string, limit = 10): Promise<Hu
   const key = process.env.HUNTER_API_KEY
   if (!key) throw new Error('HUNTER_NOT_CONFIGURED')
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), 20000)
+  // 香港服务器跨境访问 api.hunter.io 实测单次 12–25s，波动大；20s 太紧会被 AbortController 掐断报"查失败"。
+  // nginx proxy_read_timeout 已 300s，放宽到 45s 覆盖真实延迟。
+  const timer = setTimeout(() => ctrl.abort(), 45000)
   try {
     const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&limit=${limit}&api_key=${key}`
     const res = await fetch(url, { signal: ctrl.signal })

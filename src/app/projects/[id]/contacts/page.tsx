@@ -16,6 +16,8 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
   const [persona, setPersona] = useState(''); const [busy, setBusy] = useState(false)
   const [discovering, setDiscovering] = useState(false); const [discoverMsg, setDiscoverMsg] = useState('')
   const [f, setF] = useState({ name: '', title: '', linkedinUrl: '', email: '', emailStatus: 'inferred' })
+  const [editId, setEditId] = useState<number | null>(null)
+  const [ef, setEf] = useState({ name: '', title: '', linkedinUrl: '', email: '', emailStatus: 'inferred' })
 
   useEffect(() => {
     fetch(`/api/projects/${id}/companies`).then(res => {
@@ -53,7 +55,7 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
     loadContacts()
   }
   async function hunterFind() {
-    setDiscovering(true); setDiscoverMsg('Hunter 查邮箱中（约 5–15 秒）…')
+    setDiscovering(true); setDiscoverMsg('Hunter 查邮箱中（跨境查询，约 10–40 秒，请稍候）…')
     const res = await fetch(`/api/companies/${sel}/contacts/hunter`, { method: 'POST' })
     setDiscovering(false)
     const j = await res.json().catch(() => null)
@@ -75,6 +77,15 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
   }
   async function delContact(cid: number) {
     await fetch(`/api/contacts/${cid}`, { method: 'DELETE' }); loadContacts()
+  }
+  function startEdit(t: Contact) {
+    setEditId(t.id)
+    setEf({ name: t.name || '', title: t.title || '', linkedinUrl: t.linkedin_url || '', email: t.email || '', emailStatus: t.email_status || 'inferred' })
+  }
+  async function saveEdit() {
+    if (editId === null) return
+    await fetch(`/api/contacts/${editId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ef) })
+    setEditId(null); loadContacts()
   }
 
   return (
@@ -105,16 +116,37 @@ export default function ContactsPage({ params }: { params: Promise<{ id: string 
             <table>
               <thead><tr><th>姓名/职位</th><th>邮箱</th><th>状态</th><th></th></tr></thead>
               <tbody>
-                {contacts.map(t => (
+                {contacts.map(t => editId === t.id ? (
+                  <tr key={t.id}>
+                    <td>
+                      <input placeholder="姓名" value={ef.name} onChange={e => setEf({ ...ef, name: e.target.value })} style={{ marginBottom: 4 }} />
+                      <input placeholder="职位" value={ef.title} onChange={e => setEf({ ...ef, title: e.target.value })} style={{ marginBottom: 4 }} />
+                      <input placeholder="LinkedIn URL" value={ef.linkedinUrl} onChange={e => setEf({ ...ef, linkedinUrl: e.target.value })} />
+                    </td>
+                    <td><input placeholder="邮箱" value={ef.email} onChange={e => setEf({ ...ef, email: e.target.value })} /></td>
+                    <td>
+                      <select value={ef.emailStatus} onChange={e => setEf({ ...ef, emailStatus: e.target.value })} style={{ width: 90 }}>
+                        {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <button className="btn" style={{ padding: '2px 8px', marginRight: 4 }} onClick={saveEdit}>保存</button>
+                      <button className="btn secondary" style={{ padding: '2px 8px' }} onClick={() => setEditId(null)}>取消</button>
+                    </td>
+                  </tr>
+                ) : (
                   <tr key={t.id}>
                     <td>{t.name}<div className="muted">{t.title}</div>{t.linkedin_url && <a href={t.linkedin_url} target="_blank" rel="noreferrer">LinkedIn</a>}</td>
-                    <td>{t.email}</td>
+                    <td>{t.email || <span className="muted">—</span>}</td>
                     <td>
                       <select value={t.email_status} onChange={e => setStatus(t.id, e.target.value)} style={{ width: 90 }}>
                         {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                       </select>
                     </td>
-                    <td><button className="btn danger" style={{ padding: '2px 8px' }} onClick={() => delContact(t.id)}>删</button></td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <button className="btn secondary" style={{ padding: '2px 8px', marginRight: 4 }} onClick={() => startEdit(t)}>编辑</button>
+                      <button className="btn danger" style={{ padding: '2px 8px' }} onClick={() => delContact(t.id)}>删</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
