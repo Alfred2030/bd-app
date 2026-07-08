@@ -1,36 +1,55 @@
 type Msg = { role: 'system' | 'user'; content: string }
 
-// 主模型（GLM-5.2 推理）用于创意任务（冷邮件文案）；快模型（GLM-4.6 非推理）
-// 用于结构化信息任务（生成经销商列表、提取决策人、职位画像、跟进草稿），快 2–4 倍。
-export async function glmChat(messages: Msg[], opts: { timeoutMs?: number; fast?: boolean; model?: string } = {}): Promise<string> {
+// GLM 达到账户速率限制（429 / code 1302）时抛出，供上层返回「AI 繁忙请重试」而非「服务器错误」。
+export class GlmRateLimitError extends Error {}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+// 退避：3s / 8s / 15s（+抖动），429 立即返回故重试成本低
+const backoffMs = (attempt: number) => [3000, 8000, 15000][attempt] + Math.floor(Math.random() * 1500)
+
+type Once = { ok: true; content: string } | { ok: false; status: number; body: string }
+
+async function callOnce(model: string, messages: Msg[], timeoutMs: number): Promise<Once> {
   const ctrl = new AbortController()
-  // GLM-5.2 推理模型单次生成可达 3 分钟+，默认放宽到 5 分钟
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 300000)
-  // 三档：opts.model 显式指定 > fast(air，读文本/写建议类) > 主模型(GLM-5.2，冷邮件创意)
-  const model = opts.model
-    || (opts.fast ? (process.env.GLM_FAST_MODEL || 'glm-4-air') : (process.env.GLM_MODEL || 'glm-4.6'))
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.GLM_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: 0.6,
-      }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GLM_API_KEY}` },
+      body: JSON.stringify({ model, messages, temperature: 0.6 }),
       signal: ctrl.signal,
     })
-    if (!res.ok) throw new Error(`GLM API ${res.status}: ${await res.text()}`)
+    if (!res.ok) return { ok: false, status: res.status, body: await res.text().catch(() => '') }
     const data = await res.json()
     const content = data?.choices?.[0]?.message?.content
     if (typeof content !== 'string') throw new Error('GLM 返回格式异常')
-    return content
+    return { ok: true, content }
   } finally {
     clearTimeout(timer)
   }
+}
+
+// 主模型（GLM-5.2/4.6 推理）用于创意任务（冷邮件文案）；快模型（air）用于结构化任务。
+// 429（账户限流）/ 5xx / 网络超时会自动退避重试；共 4 次尝试。多标签同时点生成最易触发限流。
+export async function glmChat(messages: Msg[], opts: { timeoutMs?: number; fast?: boolean; model?: string } = {}): Promise<string> {
+  const model = opts.model
+    || (opts.fast ? (process.env.GLM_FAST_MODEL || 'glm-4-air') : (process.env.GLM_MODEL || 'glm-4.6'))
+  const timeoutMs = opts.timeoutMs ?? 300000
+  const maxAttempts = 4
+  let last: Error | null = null
+  for (let i = 0; i < maxAttempts; i++) {
+    let r: Once | null = null
+    try { r = await callOnce(model, messages, timeoutMs) }
+    catch (e) { last = e as Error }               // fetch abort / 网络 / 格式异常
+    if (r && r.ok) return r.content
+    const status = r ? r.status : null
+    if (r && !r.ok) last = new Error(`GLM API ${status}: ${r.body}`)
+    const retryable = r === null || status === 429 || (status != null && status >= 500)
+    if (retryable && i < maxAttempts - 1) { await sleep(backoffMs(i)); continue }
+    if (status === 429) throw new GlmRateLimitError(`GLM API 429: ${r?.body ?? ''}`)
+    throw last ?? new Error('GLM 调用失败')
+  }
+  throw last ?? new Error('GLM 调用失败')
 }
 
 export function extractJson(text: string): unknown {

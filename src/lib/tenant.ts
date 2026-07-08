@@ -1,5 +1,6 @@
 import { sql } from './db'
 import { UnauthorizedError } from './session'
+import { GlmRateLimitError } from './glm'
 
 export class NotFoundError extends Error {}
 
@@ -20,6 +21,16 @@ export async function assertCompanyOwner(companyId: number, uid: number): Promis
 export function errorResponse(e: unknown): Response {
   if (e instanceof UnauthorizedError) return Response.json({ error: '未登录' }, { status: 401 })
   if (e instanceof NotFoundError) return Response.json({ error: '不存在' }, { status: 404 })
+  // AI 账户限流（429 / 智谱 code 1302）：给用户可操作的提示，而非笼统「服务器错误」
+  if (e instanceof GlmRateLimitError || (e instanceof Error && /GLM API 429|1302|速率限制/.test(e.message))) {
+    console.error('GLM rate limited:', e instanceof Error ? e.message : e)
+    return Response.json({ error: 'AI 服务繁忙（已达调用频率上限），请等 10–20 秒再试；同时开多个标签一起生成更容易触发限流，建议一个个来。' }, { status: 429 })
+  }
+  // AI 超时/中断
+  if (e instanceof Error && (e.name === 'AbortError' || /aborted|timeout|超时/i.test(e.message))) {
+    console.error('GLM timeout:', e.message)
+    return Response.json({ error: 'AI 生成超时（模型排队较久），请稍后重试。' }, { status: 504 })
+  }
   console.error(e)
   return Response.json({ error: '服务器错误' }, { status: 500 })
 }
