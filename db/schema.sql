@@ -100,9 +100,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS metering_enabled BOOLEAN NOT NULL DEF
 -- 邀请码携带的 AI 预充值额度（分）：付 ¥299 = 开通账号 + 注册即到账 ¥299 余额。默认 29900 分。
 ALTER TABLE invite_codes ADD COLUMN IF NOT EXISTS credit_cents NUMERIC(14,4) NOT NULL DEFAULT 29900;
 
--- 模型单价（分 / 1000 tokens）。★上线前请对照智谱 bigmodel 控制台实际单价核对：改此表即可，无需改代码。
--- seed 依据（智谱官方公开价，元/百万tokens → 分/1K = ×0.1）：
---   glm-4-flash 0.1/0.1 · glm-4-air 0.5/0.5 · glm-4.5 系 0.8/2 · 4.6/5.2 暂沿用 4.5 系，确认后改。
+-- 模型单价（分 / 1000 tokens）。改此表即生效（运行时读取，缓存 5 分钟），无需改代码/重部署。
+-- 现采用统一保守单价 0.025 元/千tokens = 2.5 分/1K（输入输出一致，所有模型），宁高估不吃亏。
+-- 如需按智谱控制台实际单价分档，改对应行即可（分/1K = 元每百万 × 0.1）。
 CREATE TABLE IF NOT EXISTS model_rates (
   model TEXT PRIMARY KEY,
   in_per_1k NUMERIC(10,5) NOT NULL DEFAULT 0,
@@ -110,12 +110,12 @@ CREATE TABLE IF NOT EXISTS model_rates (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 INSERT INTO model_rates (model, in_per_1k, out_per_1k) VALUES
-  ('glm-4-flash', 0.01, 0.01),
-  ('glm-4-air',   0.05, 0.05),
-  ('glm-4.5',     0.08, 0.20),
-  ('glm-4.6',     0.08, 0.20),
-  ('glm-5.2',     0.10, 0.30),
-  ('default',     0.10, 0.30)
+  ('glm-4-flash', 2.5, 2.5),
+  ('glm-4-air',   2.5, 2.5),
+  ('glm-4.5',     2.5, 2.5),
+  ('glm-4.6',     2.5, 2.5),
+  ('glm-5.2',     2.5, 2.5),
+  ('default',     2.5, 2.5)
 ON CONFLICT (model) DO NOTHING;
 
 -- 逐次 LLM 用量流水（tokens + GLM 成本 + 应收）
