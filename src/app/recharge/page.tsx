@@ -25,7 +25,7 @@ export default function Recharge() {
           </p>
         )}
         <p className="muted" style={{ fontSize: 14, lineHeight: 1.9, marginTop: 10 }}>
-          支付宝扫码预充值 <b>¥299</b>，AI 用量按实际消耗计费（含 25% 手续费）。付款后加微信发送
+          支付宝扫码预充值 <b>¥299</b>，AI 用量按实际消耗从余额扣减。付款后加微信发送
           <b>付款截图 + 注册邮箱</b>，确认后额度即时到账。
         </p>
         <div style={{ textAlign: 'center', margin: '16px 0' }}>

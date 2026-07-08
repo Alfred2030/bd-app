@@ -1,5 +1,5 @@
-// LLM 计费口径：应收 = GLM 实际成本 × 1.25（25% 手续费）。金额单位统一为「分」。
-export const SURCHARGE = 1.25
+// LLM 计费口径：应收 = GLM 实际成本 × 2（与统一单价 0.025 元/千tokens 配套）。金额单位统一为「分」。
+export const SURCHARGE = 2
 
 // 单价：分 / 1000 tokens（输入、输出分开计价）。
 export type Rate = { in: number; out: number }

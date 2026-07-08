@@ -92,7 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_companies_project ON companies(project_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_id);
 
 -- ===== 大模型用量计量 + 预付费余额（2026-07-08）=====
--- 计费口径：应收 = GLM 实际成本 × 1.25（25% 手续费）；余额 ≤ 0 且计量开启时自动停止 AI 功能。
+-- 计费口径：应收 = GLM 实际成本 × 2（系数在 pricing.ts SURCHARGE，配套单价 0.025 元/千）；余额 ≤ 0 且计量开启时自动停止 AI 功能。
 -- 金额单位统一为「分」（NUMERIC 保留小数，避免逐次微额扣费累计舍入丢失）；充值/展示时换算为元。
 ALTER TABLE users ADD COLUMN IF NOT EXISTS balance_cents NUMERIC(14,4) NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS metering_enabled BOOLEAN NOT NULL DEFAULT true;

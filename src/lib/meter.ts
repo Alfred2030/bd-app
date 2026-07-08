@@ -33,7 +33,7 @@ export async function assertBalance(ctx: MeterCtx): Promise<void> {
   if (enabled && bal <= 0) throw new QuotaExceededError('余额不足，AI 功能已暂停')
 }
 
-// 后置扣费记账：算成本×1.25 → 原子扣余额 → 写用量流水 + 余额流水。
+// 后置扣费记账：算成本×2 → 原子扣余额 → 写用量流水 + 余额流水。
 // 计量失败绝不阻断主流程（用户已拿到 AI 结果），仅记日志供事后对账。
 export async function recordUsage(ctx: MeterCtx, model: string, usage: Usage): Promise<void> {
   try {

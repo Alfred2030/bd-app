@@ -127,7 +127,7 @@ export default function AdminPage() {
       <div className="card" style={{ overflowX: 'auto' }}>
         <h2>用量与余额 <span className="badge ai">AI 计费</span></h2>
         <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px', lineHeight: 1.7 }}>
-          应收 = GLM 成本 × 1.25（含 25% 手续费）。余额 ≤ 0 且「计量」开启时，该用户 AI 功能自动停止；收到 ¥299 付款后点「充值」补额度。
+          应收 = GLM 成本 × 2（单价 0.025 元/千tokens）。余额 ≤ 0 且「计量」开启时，该用户 AI 功能自动停止；收到 ¥299 付款后点「充值」补额度。
           <button className="btn secondary" style={{ padding: '2px 10px', marginLeft: 8, fontSize: 12 }} onClick={exportCsv}>导出 CSV</button>
         </p>
         <table>
