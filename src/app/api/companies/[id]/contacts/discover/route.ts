@@ -39,10 +39,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const prompt = buildContactExtractionPrompt(project as never, company as never, results)
     let parsed: unknown = []
     try {
-      parsed = extractJson(await glmChat(prompt, { fast: true }))
+      parsed = extractJson(await glmChat(prompt, { fast: true, meter: { uid: u.uid, tool: 'bd' } }))
     } catch {
       // GLM 偶发输出解释文字而非 JSON：重试一次，再失败按"未找到"处理
-      try { parsed = extractJson(await glmChat(prompt, { fast: true })) } catch { parsed = [] }
+      try { parsed = extractJson(await glmChat(prompt, { fast: true, meter: { uid: u.uid, tool: 'bd' } })) } catch { parsed = [] }
     }
     const { rows } = parseContactCandidates(parsed)
     const candidates = rows.slice(0, 5)

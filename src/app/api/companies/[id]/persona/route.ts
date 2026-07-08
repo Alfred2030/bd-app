@@ -11,7 +11,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const { projectId } = await assertCompanyOwner(cid, u.uid)
     const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`
     const [company] = await sql`SELECT * FROM companies WHERE id = ${cid}`
-    const text = await glmChat(buildPersonaPrompt(project as never, company as never), { fast: true })
+    const text = await glmChat(buildPersonaPrompt(project as never, company as never), { fast: true, meter: { uid: u.uid, tool: 'bd' } })
     return Response.json({ text })
   } catch (e) { return errorResponse(e) }
 }

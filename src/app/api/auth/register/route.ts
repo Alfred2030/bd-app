@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     UPDATE invite_codes SET used_count = used_count + 1
     WHERE code = ${inviteCode} AND used_count < max_uses
       AND (expires_at IS NULL OR expires_at > now())
-    RETURNING code`
+    RETURNING code, credit_cents`
   if (redeemed.length === 0) return Response.json({ error: '邀请码无效或已用完' }, { status: 403 })
 
   const hash = await hashPassword(password)
@@ -36,6 +36,16 @@ export async function POST(req: Request) {
       return Response.json({ error: '邮箱已注册' }, { status: 409 })
     }
     return Response.json({ error: '服务器错误' }, { status: 500 })
+  }
+
+  // 注册即到账：把邀请码携带的 AI 预充值额度（默认 ¥299）记入用户余额
+  const credit = Number(redeemed[0].credit_cents) || 0
+  if (credit > 0) {
+    try {
+      await sql`UPDATE users SET balance_cents = ${credit} WHERE id = ${rows[0].id}`
+      await sql`INSERT INTO balance_txns (user_id, delta_cents, reason, ref, balance_after)
+                VALUES (${rows[0].id}, ${credit}, 'invite', ${inviteCode}, ${credit})`
+    } catch (e) { console.error('注册赠额失败(非阻断):', e) }
   }
 
   const token = await signToken({ uid: rows[0].id as number, email })

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import BalanceBadge from '../balance-badge'
 
 type Project = { id: number; name: string; product_desc: string; target_markets: string[]; created_at: string }
 
@@ -29,6 +30,7 @@ export default function Dashboard() {
       </div>
       <div className="container">
         <h1>我的项目</h1>
+        <BalanceBadge />
         <p style={{ margin: '12px 0' }}><Link className="btn" href="/projects/new">+ 新建开拓项目</Link></p>
         {projects === null ? <p className="muted">加载中…</p> :
           projects.length === 0 ? <div className="card muted">还没有项目，点上方新建。</div> :

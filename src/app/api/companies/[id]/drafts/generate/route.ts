@@ -14,7 +14,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`
     const [company] = await sql`SELECT * FROM companies WHERE id = ${cid}`
     const [contact] = await sql`SELECT name FROM contacts WHERE company_id = ${cid} ORDER BY id LIMIT 1`
-    const text = await glmChat(buildSequencePrompt(project as never, company as never, contact?.name as string | undefined, language))
+    const text = await glmChat(buildSequencePrompt(project as never, company as never, contact?.name as string | undefined, language), { meter: { uid: u.uid, tool: 'bd' } })
     const s = parseSequence(extractJson(text))
     await sql`
       INSERT INTO drafts (company_id, email1, email2, email3, linkedin_note, linkedin_followup, generated_at)
