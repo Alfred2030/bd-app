@@ -78,7 +78,7 @@ export default function AdminPage() {
       </p>
       <div className="card" style={{ textAlign: 'center' }}>
         <button className="btn" style={{ fontSize: 17, padding: '14px 28px', width: '100%' }} disabled={busy} onClick={issue}>
-          {busy ? '生成中…' : '生成一个邀请码（¥299 · 一码一号 · 含¥299额度）'}
+          {busy ? '生成中…' : '生成一个邀请码（免费 · 一码一号 · 含¥5试用额度）'}
         </button>
         {fresh && (
           <div style={{ marginTop: 16 }}>

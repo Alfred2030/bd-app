@@ -97,8 +97,8 @@ CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_id);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS balance_cents NUMERIC(14,4) NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS metering_enabled BOOLEAN NOT NULL DEFAULT true;
 
--- 邀请码携带的 AI 预充值额度（分）：付 ¥299 = 开通账号 + 注册即到账 ¥299 余额。默认 29900 分。
-ALTER TABLE invite_codes ADD COLUMN IF NOT EXISTS credit_cents NUMERIC(14,4) NOT NULL DEFAULT 29900;
+-- 邀请码携带的注册赠额（分）：新用户注册即到账。默认 500 分 = ¥5 免费试用；用完后管理员按 ¥299 充值。
+ALTER TABLE invite_codes ADD COLUMN IF NOT EXISTS credit_cents NUMERIC(14,4) NOT NULL DEFAULT 500;
 
 -- 模型单价（分 / 1000 tokens）。改此表即生效（运行时读取，缓存 5 分钟），无需改代码/重部署。
 -- 现采用统一保守单价 0.025 元/千tokens = 2.5 分/1K（输入输出一致，所有模型），宁高估不吃亏。
