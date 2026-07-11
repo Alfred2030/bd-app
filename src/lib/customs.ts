@@ -59,21 +59,61 @@ export function safeDate(text: string): string {
 
 type Msg = { role: 'system' | 'user'; content: string }
 
-// 第一段（快模型，便宜）：从搜索结果页挑出**确实是该竞品本身**的供应商档案 slug（最多 2 个）。
-export function buildSlugPickPrompt(query: string, searchMd: string): Msg[] {
-  return [
-    { role: 'system', content: '你是外贸海关数据分析助手。只输出 JSON，不要输出任何其他文字。' },
-    { role: 'user', content: `下面是针对竞争对手『${query}』在美国海关进口数据检索页的结果内容。请从中挑出**确实是该竞争对手本身**（如中国/韩国等的超硬材料、金刚石/CBN、切削刀具的制造商或出口商）的供应商档案，返回其档案标识 slug（即链接 /supplier/ 后面的那段）。
-规则：
-- 最多返回 2 个最相关的 slug。
-- 严格排除同名泛词的无关公司（例如通用的 Diamond / Crystal / Insert、Diamond Offshore 石油钻井、货代物流、服装、邮轮等）。
-- 名称需与所查竞品有实质对应（含其独特词），仅含通用词 "diamond/tools/crystal" 不算匹配。
-- 若没有任何可信匹配，返回空数组。
-只输出 JSON：{"slugs":["..."],"reason":"一句中文说明"}
+// 选档确定性打分：泛词/地名/行业词剔除后剩下的「独特词」才用于识别是否为该竞品本身，
+// 避免弱模型误判，也避免 Diamond/Crystal/Sino 等泛词误匹配无关公司。
+const PICK_STOPWORDS = new Set([
+  'diamond', 'diamonds', 'tool', 'tools', 'co', 'ltd', 'limited', 'inc', 'llc', 'corp', 'corporation',
+  'group', 'gruppe', 'industrial', 'industries', 'ind', 'superhard', 'super', 'hard', 'cutting', 'cutter',
+  'cbn', 'pcbn', 'pcd', 'crystal', 'sino', 'international', 'intl', 'company', 'the', 'and', 'for', 'of',
+  'materials', 'material', 'products', 'product', 'trade', 'trading', 'import', 'export', 'tech', 'technology',
+  'precision', 'new', 'china', 'chinese', 'korea', 'korean', 'abrasive', 'abrasives', 'saw', 'blade', 'blades',
+  // 常见中韩地名（避免只靠城市名误匹配）
+  'beijing', 'shanghai', 'henan', 'zhengzhou', 'hebei', 'langfang', 'guangzhou', 'shenzhen', 'ningbo',
+  'fujian', 'fuzhou', 'jiangsu', 'zhejiang', 'shandong', 'nanyang', 'osan', 'seoul', 'gyeonggi',
+])
 
-检索结果内容：
-${searchMd}` },
-  ]
+export type SupplierCandidate = { name: string; slug: string; shipments: number; isSupplier: boolean }
+
+// 从搜索页 markdown 解析候选供应商（名称 / slug / 票数 / 是否 supplier 类型）。
+export function parseSupplierCandidates(md: string): SupplierCandidate[] {
+  const re = /\[([^\]]+)\]\(https?:\/\/[^)]*\/supplier\/([a-z0-9][a-z0-9-]*)\)/gi
+  const hits: { name: string; slug: string; start: number; end: number }[] = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(md)) !== null) hits.push({ name: m[1].trim(), slug: m[2].toLowerCase(), start: m.index, end: re.lastIndex })
+  const out: SupplierCandidate[] = []
+  const seen = new Set<string>()
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i]
+    if (seen.has(h.slug)) continue
+    seen.add(h.slug)
+    const seg = md.slice(h.end, hits[i + 1]?.start ?? h.end + 400)
+    const isSupplier = /(^|\n)\s*supplier\s*(\n|$)/i.test(seg)
+    const sm = seg.match(/Total Shipments\s*\n+\s*([\d,]+)/i)
+    const shipments = sm ? Number(sm[1].replace(/,/g, '')) : 0
+    out.push({ name: h.name, slug: h.slug, shipments, isSupplier })
+  }
+  return out
+}
+
+// 选出确实是该竞品本身的供应商档案 slug（最多 2 个）。
+// 规则：查询名去泛词/地名后须有 ≥1 个「独特词」出现在候选名里才算匹配（qualified）；
+// 排名按「查询词命中数」再按票数。无独特词（如仅 "SF Diamond"）→ 返回空（判无匹配，宁缺毋滥）。
+export function pickSupplierSlugs(query: string, md: string): string[] {
+  const cands = parseSupplierCandidates(md)
+  if (cands.length === 0) return []
+  const tokens = query.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2)
+  const distinctive = tokens.filter(t => t.length >= 3 && !PICK_STOPWORDS.has(t))
+  if (distinctive.length === 0) return []
+  const scored = cands
+    .map(c => {
+      const n = c.name.toLowerCase()
+      const qualified = distinctive.some(t => n.includes(t))
+      const score = tokens.filter(t => n.includes(t)).length
+      return { c, qualified, score }
+    })
+    .filter(x => x.qualified)
+  scored.sort((a, b) => b.score - a.score || b.c.shipments - a.c.shipments)
+  return scored.slice(0, 2).map(x => x.c.slug)
 }
 
 // 第二段（主模型）：从 1–2 个供应商档案页提取美国买家 + 信号强度 + 开发切入话术。

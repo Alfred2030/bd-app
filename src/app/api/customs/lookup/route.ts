@@ -6,8 +6,8 @@ import { assertBalance, recordDataCost, type MeterCtx } from '@/lib/meter'
 import { firecrawlScrape } from '@/lib/firecrawl'
 import {
   CUSTOMS_SURCHARGE, FIRECRAWL_COST_CENTS, COVERAGE_CAVEAT,
-  searchUrl, supplierUrl, trimCustomsMarkdown, extractSupplierSlugs,
-  buildSlugPickPrompt, buildBuyerExtractPrompt, parseBuyerExtract,
+  searchUrl, supplierUrl, trimCustomsMarkdown, pickSupplierSlugs,
+  buildBuyerExtractPrompt, parseBuyerExtract,
 } from '@/lib/customs'
 
 export const maxDuration = 300
@@ -68,16 +68,8 @@ export async function POST(req: Request) {
     catch { return Response.json(SOURCE_DOWN, { status: 503 }) }
     if (searchMd.length < 40) return Response.json(SOURCE_DOWN, { status: 503 })
 
-    // 2. 快模型选出确实是该竞品的供应商档案 slug（glmChat 抛错=限流/超时等瞬时，交外层 errorResponse 映射 429/504，
-    //    此时尚未 recordDataCost，故不扣抓取费、不缓存）
-    const pickText = await glmChat(buildSlugPickPrompt(query, searchMd), { fast: true, meter: ctx, timeoutMs: 120000 })
-    let picks: string[] = []
-    try {
-      const p = extractJson(pickText) as { slugs?: unknown }
-      if (Array.isArray(p?.slugs)) picks = p.slugs.map(s => String(s).toLowerCase().replace(/^\/?supplier\//, '').trim())
-    } catch { /* 选档解析失败 → 视为无匹配（下方按真结果处理） */ }
-    const present = new Set(extractSupplierSlugs(searchMd))
-    picks = [...new Set(picks.filter(s => present.has(s)))].slice(0, 2)
+    // 2. 确定性选档：解析候选供应商 + 独特词打分匹配（比弱模型可靠，省一次 GLM 调用；不外呼故无额外成本）
+    const picks = pickSupplierSlugs(query, searchMd)
 
     // 真无匹配（搜索页有实质内容 + AI 未指认任何档案）→ 真实结果，扣费 + 缓存
     if (picks.length === 0) {

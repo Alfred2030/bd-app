@@ -1,8 +1,62 @@
 import { describe, it, expect } from 'vitest'
 import {
-  trimCustomsMarkdown, extractSupplierSlugs, scrubSource, safeDate, parseBuyerExtract, CUSTOMS_SURCHARGE,
+  trimCustomsMarkdown, extractSupplierSlugs, scrubSource, safeDate, parseBuyerExtract,
+  parseSupplierCandidates, pickSupplierSlugs, CUSTOMS_SURCHARGE,
 } from './customs'
 import { costCents } from './pricing'
+
+// 贴近真实 ImportYeti 搜索页结构的 markdown 片段
+const SEARCH_MD = `
+[Ehwa Diamond Ind](https://www.importyeti.com/supplier/ehwa-diamond-ind)
+
+supplier
+
+374 Nambu-Daero Osan Korea
+
+Total Shipments
+
+1,847
+
+[Fujian Ehwa Diamond Tools](https://www.importyeti.com/supplier/fujian-ehwa-diamond-tools)
+
+supplier
+
+Fuzhou Fujian China
+
+Total Shipments
+
+72
+
+[Ehwa Indonesia](https://www.importyeti.com/supplier/ehwa-indonesia)
+
+supplier
+
+Karawang
+
+Total Shipments
+
+1,309
+
+[Diamond Offshore](https://www.importyeti.com/supplier/diamond-offshore)
+
+supplier
+
+Aberdeen UK
+
+Total Shipments
+
+1,251
+
+[Beijing Worldia Diamond Tools](https://www.importyeti.com/supplier/beijing-worldia-diamond-tools)
+
+supplier
+
+Langfang Hebei
+
+Total Shipments
+
+4
+`
 
 describe('customs 海关反查工具', () => {
   it('CUSTOMS_SURCHARGE 为 3，且 costCents 支持覆盖系数', () => {
@@ -24,6 +78,30 @@ describe('customs 海关反查工具', () => {
     const slugs = extractSupplierSlugs(md)
     expect(slugs).toContain('beijing-worldia-diamond-tools')
     expect(slugs).toContain('ehwa-diamond-ind')
+  })
+
+  it('parseSupplierCandidates 解析名称/slug/票数', () => {
+    const cands = parseSupplierCandidates(SEARCH_MD)
+    expect(cands.length).toBe(5)
+    const ehwa = cands.find(c => c.slug === 'ehwa-diamond-ind')!
+    expect(ehwa.shipments).toBe(1847)
+    expect(ehwa.isSupplier).toBe(true)
+  })
+
+  it('pickSupplierSlugs 选中真档案：Ehwa→韩国母公司+福州工厂（按分数/票数），排除 Diamond Offshore', () => {
+    const picks = pickSupplierSlugs('Ehwa Diamond', SEARCH_MD)
+    expect(picks).toEqual(['ehwa-diamond-ind', 'fujian-ehwa-diamond-tools'])
+    expect(picks).not.toContain('diamond-offshore')
+  })
+
+  it('pickSupplierSlugs 单一独特词：Worldia→唯一沃尔德档案', () => {
+    expect(pickSupplierSlugs('Worldia', SEARCH_MD)).toEqual(['beijing-worldia-diamond-tools'])
+    expect(pickSupplierSlugs('Beijing Worldia Diamond Tools', SEARCH_MD)).toEqual(['beijing-worldia-diamond-tools'])
+  })
+
+  it('pickSupplierSlugs 无独特词（SF Diamond / 纯泛词）→ 判无匹配返回空', () => {
+    expect(pickSupplierSlugs('SF Diamond', SEARCH_MD)).toEqual([])
+    expect(pickSupplierSlugs('Diamond Tools', SEARCH_MD)).toEqual([])
   })
 
   it('scrubSource 抹掉来源网站/平台名（白标），含分隔符变体与裸域名', () => {
