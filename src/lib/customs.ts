@@ -169,7 +169,46 @@ export const BuyerSchema = z.object({
 })
 export type CustomsBuyer = z.infer<typeof BuyerSchema>
 
-// 解析主模型输出：容错 + 抹掉来源网站名 + 丢弃无名买家。
+const SIGNAL_ORDER = { 高: 0, 中: 1, 低: 2 } as const
+
+// 买家去重键：去法律后缀与标点，"General Tool Inc" 与 "General Tool" 归一为同键。
+function buyerKey(name: string): string {
+  const k = name.toLowerCase()
+    .replace(/\b(inc|llc|corp|corporation|co|ltd|limited|company|gmbh|group|the)\b/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+  return k || name.toLowerCase().trim()
+}
+
+// 同一买家若出现在多个供应商档案里，合并为一条：票数求和、产品并集、日期取最近、来源列全、信号取最高、话术取信号最强项。
+export function mergeBuyers(buyers: CustomsBuyer[]): CustomsBuyer[] {
+  const groups = new Map<string, CustomsBuyer[]>()
+  for (const b of buyers) {
+    const k = buyerKey(b.buyer_name)
+    const arr = groups.get(k)
+    if (arr) arr.push(b); else groups.set(k, [b])
+  }
+  const out: CustomsBuyer[] = []
+  for (const arr of groups.values()) {
+    if (arr.length === 1) { out.push(arr[0]); continue }
+    // 代表项 = 信号最强（并列取票数最多），其名称/话术作合并后的代表
+    const rep = [...arr].sort((a, b) => SIGNAL_ORDER[a.signal] - SIGNAL_ORDER[b.signal] || (Number(b.shipments) || 0) - (Number(a.shipments) || 0))[0]
+    const latest = arr.map(b => b.most_recent_date).filter(Boolean)
+      .sort((a, b) => (Date.parse(b) || 0) - (Date.parse(a) || 0))[0] || ''
+    out.push({
+      buyer_name: rep.buyer_name,
+      location: arr.map(b => b.location).find(Boolean) || '',
+      products: [...new Set(arr.map(b => b.products).filter(Boolean))].join('；'),
+      shipments: arr.reduce((n, b) => n + (Number(b.shipments) || 0), 0),
+      most_recent_date: latest,
+      source_supplier: [...new Set(arr.map(b => b.source_supplier).filter(Boolean))].join('、'),
+      signal: arr.reduce((s, b) => (SIGNAL_ORDER[b.signal] < SIGNAL_ORDER[s] ? b.signal : s), '低' as CustomsBuyer['signal']),
+      pitch: rep.pitch || arr.map(b => b.pitch).find(Boolean) || '',
+    })
+  }
+  return out
+}
+
+// 解析主模型输出：容错 + 抹掉来源网站名 + 丢弃无名买家 + 跨档案合并同一买家。
 export function parseBuyerExtract(raw: unknown): { suppliers: CustomsSupplier[]; buyers: CustomsBuyer[]; notes: string } {
   const obj = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
   const suppliers: CustomsSupplier[] = []
@@ -197,8 +236,8 @@ export function parseBuyerExtract(raw: unknown): { suppliers: CustomsSupplier[];
     })
   }
   const notes = scrubSource(typeof obj.notes === 'string' ? obj.notes : '')
-  // 信号强度排序：高 > 中 > 低
-  const order = { 高: 0, 中: 1, 低: 2 } as const
-  buyers.sort((a, b) => order[a.signal] - order[b.signal])
-  return { suppliers, buyers, notes }
+  // 跨档案合并同一买家，再按信号强度（高>中>低）+ 票数排序
+  const mergedBuyers = mergeBuyers(buyers)
+  mergedBuyers.sort((a, b) => SIGNAL_ORDER[a.signal] - SIGNAL_ORDER[b.signal] || (Number(b.shipments) || 0) - (Number(a.shipments) || 0))
+  return { suppliers, buyers: mergedBuyers, notes }
 }

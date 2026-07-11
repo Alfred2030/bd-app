@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  trimCustomsMarkdown, extractSupplierSlugs, scrubSource, safeDate, parseBuyerExtract,
+  trimCustomsMarkdown, extractSupplierSlugs, scrubSource, safeDate, parseBuyerExtract, mergeBuyers,
   parseSupplierCandidates, pickSupplierSlugs, CUSTOMS_SURCHARGE,
 } from './customs'
 import { costCents } from './pricing'
@@ -141,5 +141,34 @@ describe('customs 海关反查工具', () => {
   it('parseBuyerExtract 对垃圾输入返回空', () => {
     expect(parseBuyerExtract(null).buyers).toEqual([])
     expect(parseBuyerExtract('nope').suppliers).toEqual([])
+  })
+
+  it('mergeBuyers 合并跨档案同一买家：票数求和/来源合并/信号取最高/日期取最近/话术取最强项', () => {
+    const merged = mergeBuyers([
+      { buyer_name: 'General Tool Inc', location: 'Irvine, CA', products: '金刚石工具', shipments: 1392, most_recent_date: '07/07/2026', source_supplier: 'Ehwa Diamond Ind', signal: '高', pitch: 'A' },
+      { buyer_name: 'General Tool', location: '', products: '抛光垫', shipments: 72, most_recent_date: '07/04/2026', source_supplier: 'Fujian Ehwa Diamond Tools', signal: '中', pitch: 'B' },
+      { buyer_name: 'Freud America', location: 'NC', products: '锯片', shipments: 265, most_recent_date: '06/18/2026', source_supplier: 'Ehwa Diamond Ind', signal: '中', pitch: 'C' },
+    ])
+    expect(merged.length).toBe(2)
+    const gt = merged.find(b => b.buyer_name.startsWith('General Tool'))!
+    expect(gt.shipments).toBe(1464)
+    expect(gt.signal).toBe('高')
+    expect(gt.most_recent_date).toBe('07/07/2026')
+    expect(gt.source_supplier).toContain('Ehwa Diamond Ind')
+    expect(gt.source_supplier).toContain('Fujian Ehwa Diamond Tools')
+    expect(gt.pitch).toBe('A')
+    expect(gt.products).toContain('金刚石工具')
+    expect(gt.products).toContain('抛光垫')
+  })
+
+  it('parseBuyerExtract 端到端合并同名买家', () => {
+    const { buyers } = parseBuyerExtract({
+      buyers: [
+        { buyer_name: 'General Tool Inc', signal: '高', shipments: 1392, source_supplier: 'Ehwa Diamond Ind' },
+        { buyer_name: 'General Tool', signal: '中', shipments: 72, source_supplier: 'Fujian Ehwa Diamond Tools' },
+      ],
+    })
+    expect(buyers.length).toBe(1)
+    expect(buyers[0].shipments).toBe(1464)
   })
 })
