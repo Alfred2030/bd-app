@@ -7,7 +7,11 @@ import { IS_NATIVE_APP } from '@/lib/native'
 export default function BalanceBadge() {
   const [b, setB] = useState<{ balance_cents: number; spent_cents: number } | null>(null)
   useEffect(() => {
-    fetch('/api/me/balance').then(async res => { if (res.ok) setB(await res.json()) }).catch(() => {})
+    const load = () => fetch('/api/me/balance').then(async res => { if (res.ok) setB(await res.json()) }).catch(() => {})
+    load()
+    // 任何页面在消费额度后 dispatch window 事件 'balance:refresh' 即可让徽标实时刷新（如海关反查完成）。
+    window.addEventListener('balance:refresh', load)
+    return () => window.removeEventListener('balance:refresh', load)
   }, [])
   if (!b) return null
   const bal = b.balance_cents / 100

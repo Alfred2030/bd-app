@@ -49,6 +49,8 @@ export default function CustomsPage() {
       }
       setRes(data as Result)
       loadHist()
+      // 通知顶部余额徽标实时刷新（本次已扣费）
+      try { window.dispatchEvent(new Event('balance:refresh')) } catch { /* ignore */ }
     } catch {
       setErr('网络错误，请重试')
     } finally {
