@@ -22,9 +22,9 @@ export async function assertCompanyOwner(companyId: number, uid: number): Promis
 export function errorResponse(e: unknown): Response {
   if (e instanceof UnauthorizedError) return Response.json({ error: '未登录' }, { status: 401 })
   if (e instanceof NotFoundError) return Response.json({ error: '不存在' }, { status: 404 })
-  // 预付费余额耗尽（自动停止）：引导用户去充值页扫码续充
+  // 预付费余额耗尽（自动停止）。文案不提「扫码/充值页」——iOS App 内不得出现购买引导(3.1.1)，网页端余额徽标本身就有充值按钮
   if (e instanceof QuotaExceededError) {
-    return Response.json({ error: 'AI 余额不足，功能已暂停。请前往「充值」页扫码预充值后继续使用。', code: 'INSUFFICIENT_BALANCE' }, { status: 402 })
+    return Response.json({ error: 'AI 余额不足，功能已暂停，请补充额度后继续使用。', code: 'INSUFFICIENT_BALANCE' }, { status: 402 })
   }
   // AI 账户限流（429 / 智谱 code 1302）：给用户可操作的提示，而非笼统「服务器错误」
   if (e instanceof GlmRateLimitError || (e instanceof Error && /GLM API 429|1302|速率限制/.test(e.message))) {

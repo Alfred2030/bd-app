@@ -2,6 +2,7 @@ import { sql } from '@/lib/db'
 import { requireUser } from '@/lib/session'
 import { assertCompanyOwner, errorResponse } from '@/lib/tenant'
 import { glmChat, extractJson } from '@/lib/glm'
+import { assertBalance } from '@/lib/meter'
 import { buildContactExtractionPrompt, parseContactCandidates } from '@/lib/ai'
 import { firecrawlSearch, type SearchResult } from '@/lib/firecrawl'
 
@@ -11,6 +12,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const cid = Number((await ctx.params).id)
     const { projectId } = await assertCompanyOwner(cid, u.uid)
     if (!process.env.FIRECRAWL_API_KEY) return Response.json({ error: '检索服务未配置' }, { status: 500 })
+    // 余额闸门前置到 Firecrawl 之前：欠费用户点「AI 检索决策人」不应先烧掉两次 Firecrawl 配额再被 402 拦下
+    await assertBalance({ uid: u.uid, tool: 'bd' })
 
     const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`
     const [company] = await sql`SELECT * FROM companies WHERE id = ${cid}`

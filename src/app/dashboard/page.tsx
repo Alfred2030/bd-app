@@ -31,6 +31,12 @@ export default function Dashboard() {
       <div className="container">
         <h1>我的项目</h1>
         <BalanceBadge />
+        <Link href="/customs" className="card" style={{ display: 'block', textDecoration: 'none', color: 'inherit', borderColor: '#b45309' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 15 }}>🔍 竞争对手客户海关数据</strong>
+            <span className="muted" style={{ fontSize: 13 }}>输入竞品英文名，反查它的美国买家 →</span>
+          </div>
+        </Link>
         <p style={{ margin: '12px 0' }}><Link className="btn" href="/projects/new">+ 新建开拓项目</Link></p>
         {projects === null ? <p className="muted">加载中…</p> :
           projects.length === 0 ? <div className="card muted">还没有项目，点上方新建。</div> :

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { IS_NATIVE_APP } from '@/lib/native'
 
 // 用户端 AI 余额徽标：只显示金额（余额 / 累计已用），不显示 token。余额 ≤0 时红色提示并引导充值。
 export default function BalanceBadge() {
@@ -18,7 +19,7 @@ export default function BalanceBadge() {
       <span className="muted" style={{ fontSize: 13 }}>累计已用 ¥{spent.toFixed(2)}</span>
       <span style={{ flex: 1 }} />
       {low && <span className="badge bad">余额已用完，AI 功能暂停</span>}
-      <Link className="btn secondary" style={{ padding: '6px 16px' }} href="/recharge">充值</Link>
+      {!IS_NATIVE_APP && <Link className="btn secondary" style={{ padding: '6px 16px' }} href="/recharge">充值</Link>}
     </div>
   )
 }

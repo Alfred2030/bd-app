@@ -1,4 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('./meter', () => ({
+  assertBalance: vi.fn(),
+  recordUsage: vi.fn(),
+}))
+
 import { extractJson } from './glm'
 import { parseCompanies, parseSequence, parseContactCandidates, companyKey } from './ai'
 

@@ -100,8 +100,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS metering_enabled BOOLEAN NOT NULL DEF
 -- 邀请码携带的注册赠额（分）：新用户注册即到账。默认 500 分 = ¥5 免费试用；用完后管理员按 ¥299 充值。
 ALTER TABLE invite_codes ADD COLUMN IF NOT EXISTS credit_cents NUMERIC(14,4) NOT NULL DEFAULT 500;
 
--- 模型单价（分 / 1000 tokens）。改此表即生效（运行时读取，缓存 5 分钟），无需改代码/重部署。
--- 现采用统一保守单价 0.025 元/千tokens = 2.5 分/1K（输入输出一致，所有模型），宁高估不吃亏。
+-- 模型单价（分 / 1000 tokens，成本基准）。改此表即生效（运行时读取，缓存 5 分钟），无需改代码/重部署。
+-- 计费口径：成本基准 0.0125 元/千 = 1.25 分/1K（输入输出一致）× 系数 2（pricing.ts SURCHARGE）= 应收 0.025 元/千。
+-- （2026-07-10 修正：此前基准误写 2.5 分/1K，应收被翻倍成 0.05 元/千。）
 -- 如需按智谱控制台实际单价分档，改对应行即可（分/1K = 元每百万 × 0.1）。
 CREATE TABLE IF NOT EXISTS model_rates (
   model TEXT PRIMARY KEY,
@@ -110,12 +111,12 @@ CREATE TABLE IF NOT EXISTS model_rates (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 INSERT INTO model_rates (model, in_per_1k, out_per_1k) VALUES
-  ('glm-4-flash', 2.5, 2.5),
-  ('glm-4-air',   2.5, 2.5),
-  ('glm-4.5',     2.5, 2.5),
-  ('glm-4.6',     2.5, 2.5),
-  ('glm-5.2',     2.5, 2.5),
-  ('default',     2.5, 2.5)
+  ('glm-4-flash', 1.25, 1.25),
+  ('glm-4-air',   1.25, 1.25),
+  ('glm-4.5',     1.25, 1.25),
+  ('glm-4.6',     1.25, 1.25),
+  ('glm-5.2',     1.25, 1.25),
+  ('default',     1.25, 1.25)
 ON CONFLICT (model) DO NOTHING;
 
 -- 逐次 LLM 用量流水（tokens + GLM 成本 + 应收）
@@ -143,3 +144,20 @@ CREATE TABLE IF NOT EXISTS balance_txns (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_balance_txns_user ON balance_txns(user_id, created_at);
+
+-- ===== 竞争对手客户海关数据（2026-07-11）=====
+-- 反查竞品在美国海关海运进口记录中的美国买家。结果缓存 7 天：同一用户查同一竞品免重复抓取/扣费。
+-- 计费：Firecrawl 抓取成本 + GLM 用量，均按 ×3（CUSTOMS_SURCHARGE，记入共用的 llm_usage/余额流水，tool='customs'）。
+CREATE TABLE IF NOT EXISTS customs_lookups (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  query TEXT NOT NULL,
+  query_norm TEXT NOT NULL,
+  matched BOOLEAN NOT NULL DEFAULT false,
+  buyers_count INT NOT NULL DEFAULT 0,
+  result JSONB NOT NULL DEFAULT '{}',
+  cost_cents NUMERIC(14,4) NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_customs_lookups_user ON customs_lookups(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_customs_lookups_cache ON customs_lookups(user_id, query_norm, created_at);

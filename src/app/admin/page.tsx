@@ -5,13 +5,14 @@ import InstallButton from '../install-button'
 
 type Code = { code: string; used_count: number; max_uses: number; created: string }
 type User = { email: string; invite_code_used: string; created: string }
-type Bill = { id: number; email: string; balance_cents: number; metering_enabled: boolean; month_billed: number; total_billed: number; total_cost: number; total_tokens: number; calls: number }
+type Acct = { key: string; name: string; balance_cents: number; spent_cents: number; metering: boolean }
+type Group = { tool: string; label: string; tier: number; keyLabel: string; accounts?: Acct[]; error?: string }
 
 export default function AdminPage() {
   const r = useRouter()
   const [codes, setCodes] = useState<Code[]>([])
   const [users, setUsers] = useState<User[]>([])
-  const [bill, setBill] = useState<Bill[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [fresh, setFresh] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -23,31 +24,19 @@ export default function AdminPage() {
     const j = await res.json()
     setCodes(j.codes); setUsers(j.users)
     const bres = await fetch('/api/admin/billing')
-    if (bres.ok) { const bj = await bres.json(); setBill(bj.users) }
+    if (bres.ok) { const bj = await bres.json(); setGroups(bj.groups || []) }
   }, [r])
   useEffect(() => { load() }, [load])
 
   const yuan = (c: number) => (Number(c) / 100).toFixed(2)
-  async function topup(email: string) {
-    const input = prompt(`给 ${email} 充值多少元？（¥299 预收款标准档）`, '299')
+  async function topup(tool: string, key: string, name: string, tier: number) {
+    const input = prompt(`【${name}】充值多少元？（标准档 ¥${tier}）`, String(tier))
     if (input == null) return
     const y = Number(input)
     if (!(y > 0)) { setMsg('金额不合法'); return }
-    const res = await fetch('/api/admin/billing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'topup', email, yuan: y }) })
-    if (res.ok) { setMsg(`已给 ${email} 充值 ¥${y.toFixed(2)}`); load() }
+    const res = await fetch('/api/admin/billing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool, key, yuan: y }) })
+    if (res.ok) { setMsg(`已给「${name}」充值 ¥${y.toFixed(2)}`); load() }
     else { const j = await res.json().catch(() => null); setMsg(j?.error || '充值失败') }
-  }
-  async function toggle(email: string, enabled: boolean) {
-    const res = await fetch('/api/admin/billing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggle', email, enabled }) })
-    if (res.ok) load(); else setMsg('操作失败')
-  }
-  function exportCsv() {
-    const head = ['邮箱', '余额(元)', '本月应收(元)', '累计应收(元)', '累计成本(元)', '累计tokens', '调用次数', '计量']
-    const lines = bill.map(u => [u.email, yuan(u.balance_cents), yuan(u.month_billed), yuan(u.total_billed), yuan(u.total_cost), u.total_tokens, u.calls, u.metering_enabled ? '开' : '停'].join(','))
-    const csv = '﻿' + [head.join(','), ...lines].join('\n')
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    a.download = 'cxodex-billing.csv'; a.click()
   }
 
   async function issue() {
@@ -67,6 +56,11 @@ export default function AdminPage() {
       .catch(() => setMsg('复制失败，请长按选中复制'))
   }
 
+  async function logout() {
+    try { await fetch('/api/auth/logout', { method: 'POST' }) } catch { /* ignore */ }
+    r.push('/login?next=/admin')
+  }
+
   const d = (s: string) => String(s).slice(0, 10)
 
   return (
@@ -74,7 +68,8 @@ export default function AdminPage() {
       <h1 style={{ marginTop: 24 }}>邀请码管理 <span className="badge ai">管理员专用</span></h1>
       <p style={{ margin: '10px 0 16px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <InstallButton />
-        <span className="muted" style={{ fontSize: 13 }}>装到手机主屏，发码更快（仅管理员账号可打开本页）</span>
+        <button className="btn secondary" style={{ padding: '5px 14px', fontSize: 13 }} onClick={logout}>退出 · 换号登录</button>
+        <span className="muted" style={{ fontSize: 13 }}>本页仅 <b>info@cxodex.com</b> 可用；如显示「无权访问」，点上面退出后用 info@ 重新登录</span>
       </p>
       <div className="card" style={{ textAlign: 'center' }}>
         <button className="btn" style={{ fontSize: 17, padding: '14px 28px', width: '100%' }} disabled={busy} onClick={issue}>
@@ -125,30 +120,36 @@ export default function AdminPage() {
         </table>
       </div>
       <div className="card" style={{ overflowX: 'auto' }}>
-        <h2>用量与余额 <span className="badge ai">AI 计费</span></h2>
-        <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px', lineHeight: 1.7 }}>
-          应收 = GLM 成本 × 2（单价 0.025 元/千tokens）。余额 ≤ 0 且「计量」开启时，该用户 AI 功能自动停止；收到 ¥299 付款后点「充值」补额度。
-          <button className="btn secondary" style={{ padding: '2px 10px', marginLeft: 8, fontSize: 12 }} onClick={exportCsv}>导出 CSV</button>
+        <h2>统一计费台 <span className="badge ai">全工具余额充值</span></h2>
+        <p className="muted" style={{ fontSize: 13, margin: '4px 0 12px', lineHeight: 1.7 }}>
+          应收 = 成本基准 0.0125 元/千 × 系数 2 = <b>0.025 元/千tokens</b>。收到付款后，找到对应工具 + 账号，点「充值」补额度。
+          ¥299 档：外贸/面试/排产/财务；¥99 档：法律。
         </p>
-        <table>
-          <thead><tr><th>邮箱</th><th>余额¥</th><th>本月¥</th><th>累计¥</th><th>成本/次/tokens</th><th>计量</th><th>充值</th></tr></thead>
-          <tbody>
-            {bill.map(u => (
-              <tr key={u.id}>
-                <td style={{ fontSize: 12 }}>{u.email}</td>
-                <td className="num"><b style={{ color: Number(u.balance_cents) <= 0 ? '#dc2626' : '#16a34a' }}>{yuan(u.balance_cents)}</b></td>
-                <td className="num">{yuan(u.month_billed)}</td>
-                <td className="num">{yuan(u.total_billed)}</td>
-                <td className="muted" style={{ fontSize: 11 }}>¥{yuan(u.total_cost)} · {u.calls}次 · {u.total_tokens}tok</td>
-                <td>
-                  <button className={`badge ${u.metering_enabled ? 'ok' : 'bad'}`} style={{ border: 'none', cursor: 'pointer' }}
-                    onClick={() => toggle(u.email, !u.metering_enabled)}>{u.metering_enabled ? '开·点停' : '停·点开'}</button>
-                </td>
-                <td><button className="btn secondary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => topup(u.email)}>充值</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {groups.length === 0 && <p className="muted" style={{ fontSize: 13 }}>加载中…</p>}
+        {groups.map(g => (
+          <div key={g.tool} style={{ marginBottom: 18 }}>
+            <h3 style={{ margin: '6px 0', fontSize: 15 }}>
+              {g.label} <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· ¥{g.tier} 档 · 按{g.keyLabel}</span>
+            </h3>
+            {g.error ? <p className="badge bad" style={{ fontSize: 12 }}>库连接失败：{g.error}</p>
+              : !g.accounts || g.accounts.length === 0 ? <p className="muted" style={{ fontSize: 12 }}>暂无账号</p>
+              : (
+                <table>
+                  <thead><tr><th>{g.keyLabel}</th><th>余额¥</th><th>已用¥</th><th>充值</th></tr></thead>
+                  <tbody>
+                    {g.accounts.map(a => (
+                      <tr key={a.key}>
+                        <td style={{ fontSize: 12 }}>{a.name}</td>
+                        <td className="num"><b style={{ color: a.balance_cents <= 0 ? '#dc2626' : '#16a34a' }}>{yuan(a.balance_cents)}</b></td>
+                        <td className="num muted">{yuan(a.spent_cents)}</td>
+                        <td><button className="btn secondary" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => topup(g.tool, a.key, a.name, g.tier)}>充值</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+          </div>
+        ))}
       </div>
     </div>
   )
